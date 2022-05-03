@@ -1,10 +1,9 @@
 #include "page/bitmap_page.h"
 
 static unsigned char bytebit[8] ={0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
+
 template<size_t PageSize>
 bool BitmapPage<PageSize>::AllocatePage(uint32_t &page_offset) {
-//    uint32_t *offset;
-
     if(page_allocated_ >= GetMaxSupportedSize())
         return false;
 
@@ -20,57 +19,56 @@ bool BitmapPage<PageSize>::AllocatePage(uint32_t &page_offset) {
         }
     }
     return true;
-
-    //    offset = &page_offset;
-//    test git push
-//    uint32_t byte_index = page_offset / 8;
-//    uint8_t bit_index = page_offset % 8;
-//    uint32_t i;
-//    for( i=0; i< GetMaxSupportedSize() ; i++){
-//        if(IsPageFree(i)){
-//            next_free_page_ = i;
-//            break;
-//        }
-//    }
-//    if ( IsPageFree(page_offset) ){
-//        bytes[byte_index] = bytes[byte_index] ^ bytebit[bit_index & 7];
-//        page_allocated_ = page_allocated_ + 1;
-//
-//        return true;
-//    }
-//    else
-//        return false;
+    /*uint32_t offset;
+    offset = page_offset;
+    uint32_t byte_index = offset / 8;
+    uint8_t bit_index = offset % 8;
+    if ( IsPageFree(offset) ){
+        bytes[byte_index] = bytes[byte_index] ^ bytebit[bit_index & 7];
+        page_allocated_ = page_allocated_ + 1;
+        uint32_t i;
+        for( i=0; i< GetMaxSupportedSize() ; i++){
+            if(IsPageFree(i)){
+                next_free_page_ = i;
+                break;
+            }
+        }
+        return true;
+    }
+    else
+        return false;*/
 }
 
 template<size_t PageSize>
 bool BitmapPage<PageSize>::DeAllocatePage(uint32_t page_offset) {
-    if(IsPageFree(page_offset))
-        return false;
+//    if(IsPageFree(page_offset))
+//        return false;
+//
+//    uint32_t byte_index = page_offset / 8;
+//    uint8_t bit_index = page_offset % 8;
+//    bytes[byte_index] = bytes[byte_index] ^ bytebit[bit_index & 7];
+//    page_allocated_ = page_allocated_ - 1;
+//    next_free_page_ = page_offset;
+//    return true;
 
     uint32_t byte_index = page_offset / 8;
     uint8_t bit_index = page_offset % 8;
-    bytes[byte_index] = bytes[byte_index] ^ bytebit[bit_index & 7];
-    page_allocated_ = page_allocated_ - 1;
-    next_free_page_ = page_offset;
-    return true;
-//    uint32_t byte_index = page_offset / 8;
-//    uint8_t bit_index = page_offset % 8;
-//    if ( !IsPageFree(page_offset) ){
-//        bytes[byte_index] = bytes[byte_index] ^ bytebit[bit_index & 7];
-//        page_allocated_ = page_allocated_ - 1;
-//        if ( page_offset < next_free_page_)
-//            next_free_page_ = page_offset;
-//        return true;
-//    }
-//    else
-//        return false;
+    if ( !IsPageFree(page_offset) ){
+        bytes[byte_index] = bytes[byte_index] ^ bytebit[bit_index & 7];
+        page_allocated_ = page_allocated_ - 1;
+        if ( page_offset < next_free_page_)
+            next_free_page_ = page_offset;
+        return true;
+    }
+    else
+        return false;
 }
 
 template<size_t PageSize>
 bool BitmapPage<PageSize>::IsPageFree(uint32_t page_offset) const {
     uint32_t byte_index = page_offset / 8;
     uint8_t bit_index = page_offset % 8;
-    bool isfree = IsPageFreeLow ( byte_index , bit_index);
+    bool isfree = IsPageFreeLow( byte_index , bit_index);
     return isfree;
 }
 
