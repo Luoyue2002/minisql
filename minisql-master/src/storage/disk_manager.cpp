@@ -55,6 +55,7 @@ bool DiskManager::IsPageFree(page_id_t logical_page_id) {
 }
 
 page_id_t DiskManager::MapPageId(page_id_t logical_page_id) {
+//    size_t MaxSupportedSize_onebitmap = BitmapPage::GetMaxSupportedSize();
   return 0;
 }
 

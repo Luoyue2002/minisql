@@ -5,7 +5,7 @@
 #include "buffer/buffer_pool_manager.h"
 #include "gtest/gtest.h"
 
-TEST(BufferPoolManagerTest, BinaryDataTest) {
+TEST( BufferPoolManagerTest, BinaryDataTest) {
   const std::string db_name = "bpm_test.db";
   const size_t buffer_pool_size = 10;
 
