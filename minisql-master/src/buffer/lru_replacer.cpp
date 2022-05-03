@@ -41,7 +41,7 @@ void LRUReplacer::Unpin(frame_id_t frame_id) {
     if(frame_id_lists.size()>= size_of_LRUreplacer)
         return;
     if (hashmap.count(frame_id) == 0) {
-        // 若不在，由于当前页面的引用为0，则把它加入到待置换的 list 头部中。
+
         frame_id_lists.push_front(frame_id);
         hashmap[frame_id] = frame_id_lists.begin();
     }

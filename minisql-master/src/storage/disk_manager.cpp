@@ -55,8 +55,10 @@ bool DiskManager::IsPageFree(page_id_t logical_page_id) {
 }
 
 page_id_t DiskManager::MapPageId(page_id_t logical_page_id) {
-//    size_t MaxSupportedSize_onebitmap = BitmapPage::GetMaxSupportedSize();
-  return 0;
+    page_id_t logical_page_id_byte =  logical_page_id / BITMAP_SIZE ;
+    page_id_t logical_page_id_bit  =  (logical_page_id % BITMAP_SIZE ) ;
+    page_id_t physical_page_id = logical_page_id_byte * (BITMAP_SIZE + 1) + (logical_page_id_bit + 1) + 1;
+    return physical_page_id;
 }
 
 int DiskManager::GetFileSize(const std::string &file_name) {
