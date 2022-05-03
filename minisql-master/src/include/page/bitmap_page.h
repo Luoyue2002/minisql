@@ -48,7 +48,7 @@ private:
   [[maybe_unused]] uint32_t page_allocated_;
   [[maybe_unused]] uint32_t next_free_page_;
   [[maybe_unused]] unsigned char bytes[MAX_CHARS];
-  [[maybe_unused]] int bytebit[8] ={0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
+//  [[maybe_unused]] int bytebit[8] ={0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01};
 };
 
 #endif //MINISQL_BITMAP_PAGE_H
