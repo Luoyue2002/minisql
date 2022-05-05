@@ -65,7 +65,7 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
       }
       if(free_list_.empty()){
           replacer_->Victim(&frame_id );
-          // return nullptr;
+         
       }
 
       Page *page_now_ = &pages_[frame_id];
@@ -121,7 +121,7 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
         }
         if(free_list_.empty()){
             replacer_->Victim(&frame_id );
-            // nullptr
+           
         }
 
 
@@ -180,7 +180,6 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
         page_now_->pin_count_ = 0;
         page_now_->is_dirty_ = false;
         page_now_->page_id_ = INVALID_PAGE_ID;
-//        page_now_->ResetMemory();
         memset(page_now_->data_ ,0, PAGE_SIZE);
 
         free_list_.push_back(frame_id);
@@ -204,7 +203,7 @@ bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
 
         if(page_now_ ->pin_count_  == 0){
             replacer_->Unpin(page_table_.find(page_id)->second);
-//            return true;
+
         }
 
         return true;
