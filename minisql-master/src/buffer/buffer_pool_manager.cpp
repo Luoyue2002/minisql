@@ -32,8 +32,7 @@ BufferPoolManager::~BufferPoolManager() {
  * 新建页面是要pin的，而fetch页面时如果已存在则引用计数加一，否则相当于新建一个页面，引用计数设为1
  */
 
-/*
- *      Page对象并不作用于唯一的数据页，它只是一个用于存放从磁盘中读取的数据页的容器。
+/*        Page对象并不作用于唯一的数据页，它只是一个用于存放从磁盘中读取的数据页的容器。
         这也就意味着同一个Page对象在系统的整个生命周期内，可能会对应很多不同的物理页。
         所以 pages_ 的追踪标志是 frame id 不是 page id ！！！
         page id 是物理页对应 ！！
@@ -55,7 +54,7 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
       return  page_now_ ;
   }
 //  if (page_table_.find(page_id) == page_table_.end())
-  {//不在page table 里
+  {     //不在page table 里
 //      Page *page_now_ = NewPage(page_id);  // 这么写不行，我忘了我在NewPage 里 memset 了 ，fetch 要 read disk manager 的
         // 找不到，用 replacer 搞一个
       frame_id_t frame_id;
@@ -66,7 +65,6 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
       }
       if(free_list_.empty()){
           replacer_->Victim(&frame_id );
-
       }
 
       Page *page_now_ = &pages_[frame_id];
@@ -122,7 +120,6 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
         }
         if(free_list_.empty()){
             replacer_->Victim(&frame_id );
-            // nullptr
         }
 
 
@@ -133,7 +130,7 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
             disk_manager_->WritePage(page_now_ ->page_id_, page_now_ ->data_);
             page_now_->is_dirty_ = false;
         }
-        /// 测试一直过不去。后来发现是这里的问题, create new 后 page table 要更新，给忘了
+        /// 测试一直过不去。后来发现是这里的问题 create new 后 page table 要更新，给忘了
         page_table_.erase(page_now_->page_id_);
 
         page_now_->is_dirty_ = false;
@@ -181,12 +178,13 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
         page_now_->pin_count_ = 0;
         page_now_->is_dirty_ = false;
         page_now_->page_id_ = INVALID_PAGE_ID;
+//        page_now_->ResetMemory();
         memset(page_now_->data_ ,0, PAGE_SIZE);
 
         free_list_.push_back(frame_id);
     }
 
-  return true;
+  return false;
 }
 
 bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
