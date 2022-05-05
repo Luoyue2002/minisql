@@ -58,7 +58,7 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
 //      Page *page_now_ = NewPage(page_id);  // 这么写不行，我忘了我在NewPage 里 memset 了 ，fetch 要 read disk manager 的
         // 找不到，用 replacer 搞一个
       frame_id_t frame_id;
-      //find victim page from free list
+      
       if(!free_list_.empty()){
           frame_id = free_list_.front();
           free_list_.pop_front();
