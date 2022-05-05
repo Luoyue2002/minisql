@@ -61,6 +61,9 @@ TEST(BufferPoolManagerTest, BinaryDataTest) {
   }
   // Scenario: We should be able to fetch the data we wrote a while ago.
   page0 = bpm->FetchPage(0);
+
+//  printf( "%s\n",page0->GetData());
+//  printf( "%s\n",random_binary_data);
   EXPECT_EQ(0, memcmp(page0->GetData(), random_binary_data, PAGE_SIZE));
   EXPECT_EQ(true, bpm->UnpinPage(0, true));
 

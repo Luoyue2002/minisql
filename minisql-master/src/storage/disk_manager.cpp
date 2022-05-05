@@ -124,7 +124,7 @@ bool DiskManager::IsPageFree(page_id_t logical_page_id) {
 
 page_id_t DiskManager::MapPageId(page_id_t logical_page_id) {
   return logical_page_id + logical_page_id/(BITMAP_SIZE) + 2;
-  
+
 }
 
 int DiskManager::GetFileSize(const std::string &file_name) {

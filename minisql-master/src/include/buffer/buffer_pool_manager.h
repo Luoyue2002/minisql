@@ -24,6 +24,8 @@ public:
 
   bool FlushPage(page_id_t page_id);
 
+  bool FlushAllPages();
+
   Page *NewPage(page_id_t &page_id);
 
   bool DeletePage(page_id_t page_id);
@@ -45,6 +47,10 @@ private:
 
 
 private:
+    // page table 是 page id 和 frame id 的对应
+    // frame id 用于 replacer  , 缓冲区分配要用
+    // page id 用于 disk_manager , 是物理部分
+
   size_t pool_size_;                                        // number of pages in buffer pool
   Page *pages_;                                             // array of pages
   DiskManager *disk_manager_;                               // pointer to the disk manager.
@@ -52,6 +58,7 @@ private:
   Replacer *replacer_;                                      // to find an unpinned page for replacement
   std::list<frame_id_t> free_list_;                         // to find a free page for replacement
   recursive_mutex latch_;                                   // to protect shared data structure
+
 };
 
 #endif  // MINISQL_BUFFER_POOL_MANAGER_H
