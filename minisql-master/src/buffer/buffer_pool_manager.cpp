@@ -64,7 +64,10 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
           free_list_.pop_front();
       }
       if(free_list_.empty()){
-          replacer_->Victim(&frame_id );
+          bool found = replacer_->Victim(&frame_id );
+          if(found == false){
+              return nullptr;
+          }
       }
 
       Page *page_now_ = &pages_[frame_id];
@@ -193,7 +196,9 @@ bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
     if(page_table_.find(page_id) != page_table_.end()){
         Page *page_now_ = &pages_[page_table_.find(page_id)->second];
 
-
+        if(is_dirty){
+            page_now_->is_dirty_ = true;
+        }
         page_now_ ->pin_count_ = page_now_ ->pin_count_ - 1 ;
         if(page_now_ ->pin_count_  < 0 ){
             page_now_ ->pin_count_ = page_now_ ->pin_count_ + 1 ;
