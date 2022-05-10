@@ -14,6 +14,7 @@ Column::Column(std::string column_name, TypeId type, uint32_t index, bool nullab
     default:
       ASSERT(false, "Unsupported column type.");
   }
+
 }
 
 Column::Column(std::string column_name, TypeId type, uint32_t length, uint32_t index, bool nullable, bool unique)

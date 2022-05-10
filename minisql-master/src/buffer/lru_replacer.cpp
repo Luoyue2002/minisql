@@ -18,7 +18,9 @@ bool LRUReplacer::Victim(frame_id_t *frame_id) {
 }
 
 void LRUReplacer::Pin(frame_id_t frame_id) {
-    if (hashmap.count(frame_id) == 0) {
+//    if (hashmap.count(frame_id) == 0)
+    if (hashmap.find(frame_id) == hashmap.end())
+    {
         return;
     }
     //release
@@ -29,7 +31,9 @@ void LRUReplacer::Pin(frame_id_t frame_id) {
 void LRUReplacer::Unpin(frame_id_t frame_id) {
     if(frame_id_lists.size()>= size_of_LRUreplacer)
         return;
-    if (hashmap.count(frame_id) == 0) {
+//    if (hashmap.count(frame_id) == 0)
+    if (hashmap.find(frame_id) == hashmap.end())
+    {
 
         frame_id_lists.push_front(frame_id);
         hashmap[frame_id] = frame_id_lists.begin();

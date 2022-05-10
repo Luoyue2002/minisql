@@ -124,6 +124,12 @@ Page *BufferPoolManager::NewPage(page_id_t &page_id) {
         if(free_list_.empty()){
             replacer_->Victim(&frame_id );
         }
+//        if(free_list_.empty()){
+//            bool found = replacer_->Victim(&frame_id );
+//            if(found == false){
+//                return nullptr;
+//            }
+//        }
 
 
         // update
