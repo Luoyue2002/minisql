@@ -37,7 +37,7 @@ Field null_fields[] = {
         Field(TypeId::kTypeInt), Field(TypeId::kTypeFloat), Field(TypeId::kTypeChar)
 };
 
-TEST(TupleTest, FieldSerializeDeserializeTest) {
+TEST(TupleTest, DISABLED_FieldSerializeDeserializeTest) {
   char buffer[PAGE_SIZE];
   memset(buffer, 0, sizeof(buffer));
   // Serialize phase
