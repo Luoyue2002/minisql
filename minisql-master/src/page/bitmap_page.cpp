@@ -36,7 +36,8 @@ bool BitmapPage<PageSize>::AllocatePage(uint32_t &page_offset) {
         return true;
     }
     else
-        return false;*/
+        return false;
+    */
 }
 
 template<size_t PageSize>

@@ -44,7 +44,7 @@ void DiskManager::WritePage(page_id_t logical_page_id, const char *page_data) {
 page_id_t DiskManager::AllocatePage() {
   // operate on the meta page
   DiskFileMetaPage* meta = reinterpret_cast<DiskFileMetaPage*>(GetMetaData());
-  ///printf("%u %lu %lu\n", meta->num_allocated_pages_, BITMAP_SIZE, (PAGE_SIZE/(8*sizeof(uint32_t)) - 2));
+  /// printf("%u %lu %lu\n", meta->num_allocated_pages_, BITMAP_SIZE, (PAGE_SIZE/(8*sizeof(uint32_t)) - 2));
   ASSERT(meta->num_allocated_pages_ < BITMAP_SIZE*(PAGE_SIZE/sizeof(uint32_t) - 2), "Space is full!");
 
   char * page_data = new char[PAGE_SIZE];
@@ -80,6 +80,7 @@ page_id_t DiskManager::AllocatePage() {
   return i*BITMAP_SIZE+pageoffset;
 }
 
+// de allocate page
 void DiskManager::DeAllocatePage(page_id_t logical_page_id) {
   ASSERT(logical_page_id >= 0, "Invalid page id.");
 
