@@ -47,6 +47,7 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
   // 3.     Delete R from the page table and insert P.
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
     std::scoped_lock lock{latch_};
+//    assert(page_id != INVALID_PAGE_ID);
   if (page_table_.find(page_id) != page_table_.end()){ //在page table 里
       Page *page_now_ = &pages_[page_table_.find(page_id)->second];
       page_now_->pin_count_ = page_now_->pin_count_ + 1;
@@ -174,7 +175,7 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
     if (page_table_.find(page_id) != page_table_.end()){
         Page *page_now_ = &pages_[page_table_.find(page_id)->second];
         frame_id_t frame_id = page_table_.find(page_id)->second;
-        if (page_now_->pin_count_ >= 0){
+        if (page_now_->pin_count_ > 0){
             return false;
         }
         if (page_now_->is_dirty_ == true){
@@ -198,7 +199,8 @@ bool BufferPoolManager::DeletePage(page_id_t page_id) {
 
 bool BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty) {
     std::scoped_lock lock{latch_};
-    // is dirty 没搞明白用来干啥
+    // is dirty 没搞明白用来干啥,
+    // 5.13 写到B+ tree 明白了
     if(page_table_.find(page_id) != page_table_.end()){
         Page *page_now_ = &pages_[page_table_.find(page_id)->second];
 
