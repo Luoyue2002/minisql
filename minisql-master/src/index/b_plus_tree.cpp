@@ -556,14 +556,14 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::End() {
   KeyType key{};
   Page * leaf_page_ = FindLeafPage(key, true);
   LeafPage * leaf_node_= reinterpret_cast<LeafPage *>( leaf_page_->GetData());
-  page_id_t next_node_page_id_;
-  while(leaf_node_->GetNextPageId()!=INVALID_PAGE_ID){
+  page_id_t next_node_page_id_ = leaf_node_->GetNextPageId() ;
+  while(next_node_page_id_!=INVALID_PAGE_ID){
     next_node_page_id_=leaf_node_->GetNextPageId();
     buffer_pool_manager_->UnpinPage(leaf_node_->GetPageId(),false);
     Page * next_node_page = buffer_pool_manager_->FetchPage(next_node_page_id_);
     leaf_page_ = next_node_page;
     leaf_node_=reinterpret_cast<LeafPage *>(leaf_page_->GetData() );
-
+    next_node_page_id_ = leaf_node_->GetNextPageId() ;
   }
 
   return INDEXITERATOR_TYPE(buffer_pool_manager_,leaf_page_,leaf_node_->GetSize());

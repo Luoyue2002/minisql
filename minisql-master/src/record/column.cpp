@@ -35,7 +35,7 @@ Column::Column(const Column *other) : name_(other->name_), type_(other->type_), 
 */
 
 uint32_t Column::SerializeTo(char *buf) const {
-  MACH_WRITE_TO(uint32_t, buf, COLUMN_MAGIC_NUM); 
+  MACH_WRITE_TO(uint32_t, buf, COLUMN_MAGIC_NUM);
   buf += Type::GetTypeSize(TypeId::kTypeInt);
   MACH_WRITE_TO(uint32_t, buf, name_.length());
   buf += Type::GetTypeSize(TypeId::kTypeInt);
