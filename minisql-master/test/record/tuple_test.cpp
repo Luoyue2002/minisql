@@ -1,4 +1,5 @@
 #include <cstring>
+#include <iostream>
 
 #include "common/instance.h"
 #include "gtest/gtest.h"
@@ -37,7 +38,7 @@ Field null_fields[] = {
         Field(TypeId::kTypeInt), Field(TypeId::kTypeFloat), Field(TypeId::kTypeChar)
 };
 
-TEST(TupleTest, DISABLED_FieldSerializeDeserializeTest) {
+TEST(TupleTest, FieldSerializeDeserializeTest) {
   char buffer[PAGE_SIZE];
   memset(buffer, 0, sizeof(buffer));
   // Serialize phase
@@ -109,7 +110,7 @@ TEST(TupleTest, RowTest) {
   ASSERT_TRUE(table_page.GetFirstTupleRid(&first_tuple_rid));
   ASSERT_EQ(row.GetRowId(), first_tuple_rid);
   Row row2(row.GetRowId());
-  ASSERT_TRUE(table_page.GetTuple(&row2, schema.get(), nullptr, nullptr));
+  ASSERT_TRUE(table_page.GetTuple(&row2, schema.get(), nullptr, nullptr)); // segment
   std::vector<Field *> &row2_fields = row2.GetFields();
   ASSERT_EQ(3, row2_fields.size());
   for (size_t i = 0; i < row2_fields.size(); i++) {

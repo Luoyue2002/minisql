@@ -88,13 +88,18 @@ uint32_t TypeInt::SerializeTo(const Field &field, char *buf) const {
   return 0;
 }
 
+// #include <iostream>
+// using namespace std;
+
 uint32_t TypeInt::DeserializeFrom(char *storage, Field **field, bool is_null, MemHeap *heap) const {
   if (is_null) {
     *field = ALLOC_P(heap, Field)(TypeId::kTypeInt);
     return 0;
   }
   int32_t val = MACH_READ_FROM(int32_t, storage);
+  // cout << val << " " << heap << " " << sizeof(Field) << endl;
   *field = ALLOC_P(heap, Field)(TypeId::kTypeInt, val);
+  // cout << "*field: " << *field << endl; 
   return GetTypeSize(type_id_);
 }
 

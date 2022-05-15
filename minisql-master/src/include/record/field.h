@@ -8,6 +8,9 @@
 #include "record/types.h"
 #include "record/type_id.h"
 
+//#include <iostream>
+//using namespace std;
+
 class Field {
   friend class Type;
 

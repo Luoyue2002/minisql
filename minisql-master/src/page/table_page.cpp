@@ -142,6 +142,7 @@ void TablePage::RollbackDelete(const RowId &rid, Transaction *txn, LogManager *l
   }
 }
 
+
 bool TablePage::GetTuple(Row *row, Schema *schema, Transaction *txn, LockManager *lock_manager) {
   ASSERT(row != nullptr && row->GetRowId().Get() != INVALID_ROWID.Get(), "Invalid row.");
   // Get the current slot number.
@@ -158,7 +159,7 @@ bool TablePage::GetTuple(Row *row, Schema *schema, Transaction *txn, LockManager
   }
   // At this point, we have at least a shared lock on the RID. Copy the tuple data into our result.
   uint32_t tuple_offset = GetTupleOffsetAtSlot(slot_num);
-  uint32_t __attribute__((unused)) read_bytes = row->DeserializeFrom(GetData() + tuple_offset, schema);
+  uint32_t __attribute__((unused)) read_bytes = row->DeserializeFrom(GetData() + tuple_offset, schema); // segment
   ASSERT(tuple_size == read_bytes, "Unexpected behavior in tuple deserialize.");
   return true;
 }
