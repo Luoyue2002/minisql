@@ -31,6 +31,7 @@ void BPLUSTREE_TYPE::Destroy() {
 /*
  * Helper function to decide whether current b+tree is empty
  */
+
 INDEX_TEMPLATE_ARGUMENTS
 bool BPLUSTREE_TYPE::IsEmpty() const {
 //    bool is_empty ;
@@ -525,7 +526,9 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin() {
-  return INDEXITERATOR_TYPE();
+  KeyType key{};
+  Page *leaf_page_ = FindLeafPage(key ,true);
+  return INDEXITERATOR_TYPE(buffer_pool_manager_, leaf_page_, 0);
 }
 
 /*
@@ -535,7 +538,11 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin() {
  */
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
-  return INDEXITERATOR_TYPE();
+  Page * leaf_page_ = FindLeafPage(key );
+  LeafPage *leaf_node_ = reinterpret_cast<LeafPage *>(leaf_page_->GetData());
+  int index = leaf_node_->KeyIndex(key, comparator_);
+  return INDEXITERATOR_TYPE(buffer_pool_manager_, leaf_page_, index);
+
 }
 
 /*
@@ -545,7 +552,22 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::End() {
-  return INDEXITERATOR_TYPE();
+  /// 遍历叶子
+  KeyType key{};
+  Page * leaf_page_ = FindLeafPage(key, true);
+  LeafPage * leaf_node_= reinterpret_cast<LeafPage *>( leaf_page_->GetData());
+  page_id_t next_node_page_id_;
+  while(leaf_node_->GetNextPageId()!=INVALID_PAGE_ID){
+    next_node_page_id_=leaf_node_->GetNextPageId();
+    buffer_pool_manager_->UnpinPage(leaf_node_->GetPageId(),false);
+    Page * next_node_page = buffer_pool_manager_->FetchPage(next_node_page_id_);
+    leaf_page_ = next_node_page;
+    leaf_node_=reinterpret_cast<LeafPage *>(leaf_page_->GetData() );
+
+  }
+
+  return INDEXITERATOR_TYPE(buffer_pool_manager_,leaf_page_,leaf_node_->GetSize());
+  /// 迭代器的end 是要指向最后之后的
 }
 
 /*****************************************************************************
