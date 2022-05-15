@@ -36,6 +36,7 @@ uint32_t Row::SerializeTo(char *buf, Schema *schema) const {
 
   // set the bitmap
   uint32_t bitmapsize = (size-1)/(8*sizeof(char)) + 1;
+  if(size == 0) bitmapsize = 1;
   u_char * bitmap = new u_char[bitmapsize];
   for(u_int32_t i = 0; i < bitmapsize; i++) bitmap[i] = 0;
   buf += sizeof(char)*bitmapsize;
@@ -59,6 +60,7 @@ uint32_t Row::DeserializeFrom(char *buf, Schema *schema) {
 
   // read the bitmap
   uint32_t bitmapsize = (size-1)/(8*sizeof(char)) + 1;
+  if(size == 0) bitmapsize = 1;
   u_char * bitmap = new u_char[bitmapsize];
   memcpy(bitmap, buf, bitmapsize);
   buf += bitmapsize*sizeof(char);
@@ -82,7 +84,10 @@ uint32_t Row::GetSerializedSize(Schema *schema) const {
   uint32_t buf = Type::GetTypeSize(TypeId::kTypeInt);
 
   // set the bitmap
-  buf += (size-1)/(8*sizeof(char)) + 1;
+  if(size != 0)
+    buf += (size-1)/(8*sizeof(char)) + 1;
+  else 
+    buf += 1;
 
   // serialize the field
   for(u_int32_t i = 0; i < size; i++) {
