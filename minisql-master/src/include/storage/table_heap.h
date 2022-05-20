@@ -32,6 +32,7 @@ public:
    * @return true iff the insert is successful
    */
   bool InsertTuple(Row &row, Transaction *txn);
+  // bool InsertTuple(const Row &row, Transaction *txn);
 
   /**
    * Mark the tuple as deleted. The actual delete will occur when ApplyDelete is called.
@@ -48,7 +49,8 @@ public:
    * @param[in] txn Transaction performing the update
    * @return true is update is successful.
    */
-  bool UpdateTuple(const Row &row, const RowId &rid, Transaction *txn);
+  // bool UpdateTuple(const Row &row, const RowId &rid, Transaction *txn);
+  bool UpdateTuple(Row &row, const RowId &rid, Transaction *txn);
 
   /**
    * Called on Commit/Abort to actually delete a tuple or rollback an insert.

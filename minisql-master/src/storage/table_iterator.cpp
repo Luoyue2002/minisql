@@ -2,38 +2,75 @@
 #include "storage/table_iterator.h"
 #include "storage/table_heap.h"
 
-TableIterator::TableIterator() {
-
+TableIterator::TableIterator(TablePage * page, RowId rowid, Schema* schema, BufferPoolManager* buffer_pool_manager) {
+  page_ = page;
+  row_id_ = rowid;
+  schema_ = schema;
+  buffer_pool_manager_ = buffer_pool_manager;
 }
 
 TableIterator::TableIterator(const TableIterator &other) {
+  page_ = other.page_;
+  row_id_ = other.row_id_;
+  schema_ = other.schema_;
+  buffer_pool_manager_ = other.buffer_pool_manager_;
 
 }
 
 TableIterator::~TableIterator() {
-
+  return;
 }
 
 bool TableIterator::operator==(const TableIterator &itr) const {
-  return false;
+  if(page_ == itr.page_ && row_id_ == itr.row_id_) return true;
+  else return false;
 }
 
 bool TableIterator::operator!=(const TableIterator &itr) const {
-  return false;
+  if(page_ == itr.page_ && row_id_ == itr.row_id_) return false;
+  else return true;
 }
 
 const Row &TableIterator::operator*() {
-  ASSERT(false, "Not implemented yet.");
+  row->SetRowId(row_id_);
+  page_->GetTuple(row, schema_, nullptr, nullptr);
+  return *row;
 }
 
 Row *TableIterator::operator->() {
-  return nullptr;
+  row->SetRowId(row_id_);
+  page_->GetTuple(row, schema_, nullptr, nullptr);
+  return row;
 }
 
 TableIterator &TableIterator::operator++() {
+  bool re;
+  RowId next_id;
+  re = page_->GetNextTupleRid(row_id_, &next_id);
+  if (re) {
+    row_id_ = next_id;
+  }
+  else {
+    page_id_t id = page_->GetNextPageId();
+    page_ = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(id));
+    page_->GetFirstTupleRid(&row_id_);
+  }
+
   return *this;
 }
 
-TableIterator TableIterator::operator++(int) {
-  return TableIterator();
+TableIterator& TableIterator::operator++(int) {
+  bool re;
+  RowId next_id;
+  re = page_->GetNextTupleRid(row_id_, &next_id);
+  if (re) {
+    row_id_ = next_id;
+  }
+  else {
+    page_id_t id = page_->GetNextPageId();
+    page_ = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(id));
+    page_->GetFirstTupleRid(&row_id_);
+  }
+
+  return *this;
 }
