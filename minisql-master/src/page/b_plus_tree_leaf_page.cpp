@@ -88,14 +88,15 @@ const MappingType &B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) {
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) {
     int index = KeyIndex(key , comparator);
-    if(comparator(key ,array_[index].first) == 0 && GetSize()!=0)/// getsize 的判断用来防止第一个插入0， 没这句0 插入不进去，
-        return GetSize();
-    for(int i = GetSize(); i>index; i--){
+//    if(comparator(key ,array_[index].first) == 0 && GetSize()!=0)/// getsize 的判断用来防止第一个插入0， 没这句0 插入不进去，
+//        return GetSize();
+    IncreaseSize(1);
+    for(int i = GetSize()-1; i>index; i--){
         array_[i] = array_[i-1];
     }
     array_[index].first = key;
     array_[index].second = value;
-    IncreaseSize(1);
+
     return  GetSize();
 }
 
