@@ -104,7 +104,16 @@ private:
           schema_(schema),
           log_manager_(log_manager),
           lock_manager_(lock_manager) {
-    ASSERT(false, "Not implemented yet.");
+
+
+
+          Page* page_first = buffer_pool_manager_->NewPage(first_page_id_);
+          TablePage * table_page = reinterpret_cast<TablePage *>(page_first);
+          table_page->Init(first_page_id_,INVALID_PAGE_ID,log_manager, nullptr);
+
+          buffer_pool_manager_->UnpinPage(first_page_id_, true);
+//          first_page_id_ = INVALID_PAGE_ID;
+
   };
 
   /**

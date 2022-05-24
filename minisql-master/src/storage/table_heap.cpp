@@ -13,6 +13,9 @@ bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
     buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
     if(re) return true;
     page_id = page->GetNextPageId();
+    if(page_id == INVALID_PAGE_ID){
+      break;
+    }
   }
 
   // if(page == nullptr) {
