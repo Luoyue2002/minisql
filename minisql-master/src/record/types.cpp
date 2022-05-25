@@ -88,9 +88,6 @@ uint32_t TypeInt::SerializeTo(const Field &field, char *buf) const {
   return 0;
 }
 
-// #include <iostream>
-// using namespace std;
-
 uint32_t TypeInt::DeserializeFrom(char *storage, Field **field, bool is_null, MemHeap *heap) const {
   if (is_null) {
     *field = ALLOC_P(heap, Field)(TypeId::kTypeInt);
@@ -115,6 +112,7 @@ CmpBool TypeInt::CompareEquals(const Field &left, const Field &right) const {
   if (left.IsNull() || right.IsNull()) {
     return CmpBool::kNull;
   }
+  // cout << left.value_.integer_ << " " << right.value_.integer_ << endl;
   return GetCmpBool(left.value_.integer_ == right.value_.integer_);
 }
 

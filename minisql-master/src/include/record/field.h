@@ -8,8 +8,8 @@
 #include "record/types.h"
 #include "record/type_id.h"
 
-//#include <iostream>
-//using namespace std;
+// #include <iostream>
+// using namespace std;
 
 class Field {
   friend class Type;
@@ -111,7 +111,11 @@ public:
     return type_id_ == o.type_id_;
   }
 
-  inline CmpBool CompareEquals(const Field &o) const { return Type::GetInstance(type_id_)->CompareEquals(*this, o); }
+  inline CmpBool CompareEquals(const Field &o) const { 
+    // cout << this->type_id_ << " " << o.type_id_ << endl;;
+    // cout << this->GetData() << " " << o.GetData() << endl;;
+    return Type::GetInstance(type_id_)->CompareEquals(*this, o); 
+  }
 
   inline CmpBool CompareNotEquals(const Field &o) const {
     return Type::GetInstance(type_id_)->CompareNotEquals(*this, o);

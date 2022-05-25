@@ -1,75 +1,41 @@
 #include "storage/table_heap.h"
 
+// #include <iostream>
+// using namespace std;
+
 bool TableHeap::InsertTuple(Row &row, Transaction *txn) {
-//  TablePage* page;
-//  page_id_t page_id = first_page_id_;
-//  bool re;
-//  while( (page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id)) ) != nullptr ) {
-//    // how to make sure that whether the page can hold the row
-//    /// need to find whether hold by the return value of TablePage::InsertTuple
-//    page->WLatch();
-//    re = page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
-//    page->WUnlatch();
-//    buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
-//    if(re) return true;
-//    page_id = page->GetNextPageId();
-//    if(page_id == INVALID_PAGE_ID){
-//      break;
-//    }
-//  }
-//
-//  // if(page == nullptr) {
-//  /// the page must be nullptr to get out of the loop
-//  page = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(page_id) );
-//  if (!page) return false;
-//
-//  // how to insert data to the page
-//  /// TablePage::InsertTuple
-//  re = page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
-//
-//  return re;
-    Page * page_now = buffer_pool_manager_->FetchPage(first_page_id_);
-    TablePage * table_page_now = reinterpret_cast<TablePage *>(page_now);
-    if(table_page_now != nullptr){
-      bool  finish = table_page_now->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
-      while (!finish) {
-        page_id_t next_page_id = table_page_now->GetNextPageId();
+  TablePage* page = NULL, *prepage = NULL;
+  page_id_t page_id = first_page_id_;
+  bool re;
+  while( page_id != INVALID_PAGE_ID &&
+   (page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id)) ) != nullptr ) {
+    // how to make sure that whether the page can hold the row
+    /// need to find whether hold by the return value of TablePage::InsertTuple
+    page->WLatch();
+    re = page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
+    page->WUnlatch();
+    buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
+    if(re) return true;
 
-        if (next_page_id != INVALID_PAGE_ID) {
+    page_id = page->GetNextPageId();
+    prepage = page;
+  }
 
-          buffer_pool_manager_->UnpinPage(table_page_now->GetTablePageId(), false);
-          table_page_now = static_cast<TablePage *>(buffer_pool_manager_->FetchPage(next_page_id));
+  // page_id == INVALID_PAGE_ID || page == nullptr
+  page = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(page_id) );
+  if (!page) return false;
+  // register the page
+  prepage->SetNextPageId(page_id);
+  page->Init(page_id, prepage->GetPageId(), log_manager_, txn);
 
-        } else {
+  /// TablePage::InsertTuple
+  page->WLatch();
+  re = page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
+  page->WUnlatch();
+  buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
 
-          TablePage * new_table_page = static_cast<TablePage *>(buffer_pool_manager_->NewPage( next_page_id));
-          if (new_table_page == nullptr) {
+  return re;
 
-            buffer_pool_manager_->UnpinPage(table_page_now->GetTablePageId(), false);
-            return false;
-          }
-
-          table_page_now->SetNextPageId(next_page_id);
-          table_page_now->Init(next_page_id,table_page_now->GetTablePageId(), log_manager_, txn);
-          table_page_now->WUnlatch();
-          buffer_pool_manager_->UnpinPage(table_page_now->GetTablePageId(), true);
-          table_page_now = new_table_page;
-          finish = table_page_now->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
-        }
-      }
-
-
-      buffer_pool_manager_->UnpinPage(table_page_now->GetTablePageId(), true);
-
-      return true;
-    }
-
-
-    else{
-      return false ;
-    }
-
-    return false;
 }
 
 bool TableHeap::MarkDelete(const RowId &rid, Transaction *txn) {
@@ -145,16 +111,23 @@ bool TableHeap::GetTuple(Row *row, Transaction *txn) {
   TablePage* page;
   page_id_t page_id = first_page_id_;
   bool re;
-  while( (page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id)) ) != nullptr ) {
-    // how to make sure that whether the page can hold the row
-    /// need to find whether hold by the return value of TablePage::InsertTuple
-    page->RLatch();
-    re = page->GetTuple(row, schema_, txn, lock_manager_);
-    page->RUnlatch();
-    buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
 
-    if(re) return true;
+  if (page_id == INVALID_PAGE_ID) return false;
+  while( (page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id)) ) != nullptr ) {
+    // not this page
+    // cout << page->GetPageId() << " " << row->GetRowId().GetPageId() << endl;
+    if(page->GetPageId() == row->GetRowId().GetPageId()) {
+
+      page->RLatch();
+      re = page->GetTuple(row, schema_, txn, lock_manager_);
+      page->RUnlatch();
+      buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
+
+      if(re) return true;
+    } 
+
     page_id = page->GetNextPageId();
+    if (page_id == INVALID_PAGE_ID) break;
   }
 
   return false;

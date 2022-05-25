@@ -11,6 +11,9 @@
 static string db_file_name = "table_heap_test.db";
 using Fields = std::vector<Field>;
 
+// #include <iostream>
+// using namespace std;
+
 TEST(TableHeapTest, TableHeapSampleTest) {
   // init testing instance
   DBStorageEngine engine(db_file_name);
@@ -37,20 +40,35 @@ TEST(TableHeapTest, TableHeapSampleTest) {
     };
     Row row(*fields);
     table_heap->InsertTuple(row, nullptr);
+    // cout << row.GetRowId().GetPageId() << " " << row.GetRowId().GetSlotNum() << endl;
     row_values[row.GetRowId().Get()] = fields;
     delete[] characters;
   }
+
+  //=========================== My Test ===========================//
+  // for(TableIterator i = table_heap->Begin(nullptr); i != table_heap->End() ; i++) {
+  //   cout << i->GetRowId().GetPageId() << " " << i->GetRowId().GetPageId() << endl;
+  // }
+
+  //=========================== My Test ===========================//
+
 
   ASSERT_EQ(row_nums, row_values.size());
   for (auto row_kv : row_values) {
     Row row(RowId(row_kv.first));
     table_heap->GetTuple(&row, nullptr);
+    // cout << row.GetRowId().GetPageId() << " " << row.GetRowId().GetSlotNum() << endl;
     ASSERT_EQ(schema.get()->GetColumnCount(), row.GetFields().size());
     for (size_t j = 0; j < schema.get()->GetColumnCount(); j++) {
+      //cout << j << " " << row.GetField(j)->CompareEquals(row_kv.second->at(j)) << endl;
+      //Field* a1 = row.GetField(j), *a2 = &(row_kv.second->at(j));
+      //cout << Type::GetInstance(kTypeInt)->GetData(*a1) << " " << Type::GetInstance(kTypeInt)->GetData(*a2) << endl;
       ASSERT_EQ(CmpBool::kTrue, row.GetField(j)->CompareEquals(row_kv.second->at(j)));
     }
     // free spaces
     delete row_kv.second;
   }
+
+  remove(db_file_name.c_str());
 }
 
