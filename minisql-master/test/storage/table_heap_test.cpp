@@ -47,7 +47,7 @@ TEST(TableHeapTest, TableHeapSampleTest) {
 
   //=========================== My Test ===========================//
   // for(TableIterator i = table_heap->Begin(nullptr); i != table_heap->End() ; i++) {
-  //   cout << i->GetRowId().GetPageId() << " " << i->GetRowId().GetPageId() << endl;
+  //   cout << i->GetRowId().GetPageId() << " " << i->GetRowId().GetSlotNum() << endl;
   // }
 
   //=========================== My Test ===========================//

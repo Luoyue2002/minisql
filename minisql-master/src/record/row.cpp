@@ -58,6 +58,8 @@ uint32_t Row::DeserializeFrom(char *buf, Schema *schema) {
   uint32_t size = MACH_READ_FROM(uint32_t, buf); 
   buf += Type::GetTypeSize(TypeId::kTypeInt);
 
+  fields_.clear();
+  
   // read the bitmap
   uint32_t bitmapsize = (size-1)/(8*sizeof(char)) + 1;
   if(size == 0) bitmapsize = 1;

@@ -2,11 +2,16 @@
 #include "storage/table_iterator.h"
 #include "storage/table_heap.h"
 
+// #include <iostream>
+// using namespace std;
+
 TableIterator::TableIterator(TablePage * page, RowId rowid, Schema* schema, BufferPoolManager* buffer_pool_manager) {
   page_ = page;
   row_id_ = rowid;
   schema_ = schema;
   buffer_pool_manager_ = buffer_pool_manager;
+
+  row = new Row(row_id_);
 }
 
 TableIterator::TableIterator(const TableIterator &other) {
@@ -15,10 +20,11 @@ TableIterator::TableIterator(const TableIterator &other) {
   schema_ = other.schema_;
   buffer_pool_manager_ = other.buffer_pool_manager_;
 
+  row = new Row(row_id_);
 }
 
 TableIterator::~TableIterator() {
-  return;
+  delete row;
 }
 
 bool TableIterator::operator==(const TableIterator &itr) const {
@@ -38,8 +44,13 @@ const Row &TableIterator::operator*() {
 }
 
 Row *TableIterator::operator->() {
+  // cout << "table_iterator.cpp1 " << row_id_.GetPageId() << " " << row_id_.GetSlotNum() << endl;
   row->SetRowId(row_id_);
+  // cout << "table_iterator.cpp2 " << row->GetRowId().GetPageId() << " " << row->GetRowId().GetSlotNum() << endl;
+  page_->RLatch();
   page_->GetTuple(row, schema_, nullptr, nullptr);
+  page_->RUnlatch();
+  buffer_pool_manager_->UnpinPage(page_->GetTablePageId(), true);
   return row;
 }
 

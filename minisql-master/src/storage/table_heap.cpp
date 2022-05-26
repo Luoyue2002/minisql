@@ -137,6 +137,7 @@ TableIterator TableHeap::Begin(Transaction *txn) {
   RowId rowid;
   TablePage* page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id_));
   page->GetFirstTupleRid(&rowid);
+  // cout << rowid.GetPageId() << " " << rowid.GetSlotNum() << endl;
   return TableIterator( page, rowid, schema_, buffer_pool_manager_ );
 }
 
@@ -144,7 +145,8 @@ TableIterator TableHeap::End() {
   TablePage* page, *page2;
   page_id_t page_id = first_page_id_;
   
-  while( (page2 = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id)) ) != nullptr ) {
+  while( page_id != INVALID_PAGE_ID && 
+    (page2 = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id)) ) != nullptr ) {
     // how to make sure that whether the page can hold the row
     /// need to find whether hold by the return value of TablePage::InsertTuple
     page = page2;
@@ -157,5 +159,6 @@ TableIterator TableHeap::End() {
   while(page->GetNextTupleRid(rowid, &rowid2)) rowid = rowid2;
 
   // return the iterator
+  // cout << rowid.GetPageId() << " " << rowid.GetSlotNum() << endl;
   return TableIterator( page, rowid, schema_, buffer_pool_manager_ );
 }
