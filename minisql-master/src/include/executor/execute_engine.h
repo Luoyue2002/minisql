@@ -39,6 +39,7 @@ public:
    * executor interface
    */
   dberr_t Execute(pSyntaxNode ast, ExecuteContext *context);
+  /// get .db file
 
 private:
   dberr_t ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *context);
@@ -78,6 +79,8 @@ private:
   dberr_t ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context);
 
   dberr_t ExecuteQuit(pSyntaxNode ast, ExecuteContext *context);
+
+  vector<string> GetFiles(const char *src_dir, const char *ext);
 
 private:
   [[maybe_unused]] std::unordered_map<std::string, DBStorageEngine *> dbs_;  /** all opened databases */

@@ -1,9 +1,99 @@
+//#include <direct.h>
 #include "executor/execute_engine.h"
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <algorithm>
 #include "glog/logging.h"
 
 ExecuteEngine::ExecuteEngine() {
+    const std::string temp = "../../database";
+    const std::string ext = ".db";
+    //创建文件夹
+    if(access(temp.c_str(),0) == 0){
+      cout << "exist "<< endl;
+    }
+    else{
+      mkdir(temp.c_str(),S_IRWXG);
+      cout << "create"<< endl;
+    }
+    // 进入目录读文件
+    vector<string> file_name  = GetFiles(temp.c_str(), ext.c_str());
+    // ------------------------test
+    vector<string>::iterator file_name_it  ;
+    for (file_name_it = file_name.begin(); file_name_it != file_name.end(); file_name_it++) {
+      cout << *file_name_it << " " << endl;
+
+    }
+    if(!file_name.empty()) {
+      for (file_name_it = file_name.begin(); file_name_it != file_name.end(); file_name_it++) {
+        DBStorageEngine *storage_engine_ = new DBStorageEngine(*file_name_it, true, DEFAULT_BUFFER_POOL_SIZE);
+        dbs_.emplace(*file_name_it, storage_engine_);
+      }
+    }
 
 }
+
+/************************************************************
+ * Description:
+ *     获取dir目录下具有制定后缀名字的所有文件名，
+ * parameter:
+ *     src_dir:目录路径，例如 "../test"
+ *     ext:后缀名,例如".jpg"
+ * return；
+ *     vector<string>：包含文件名的数组，
+ * ***********************************************************/
+ ///这个函数来自网上，做了一点改动
+vector<string> ExecuteEngine::GetFiles(const char *src_dir, const char *ext)
+{
+  vector<string> result;
+  string directory(src_dir);
+  string m_ext(ext);
+
+  // 打开目录, DIR是类似目录句柄的东西
+  DIR *dir = opendir(src_dir);
+  if ( dir == NULL )
+  {
+    printf("[ERROR] %s is not a directory or not exist!", src_dir);
+    return result;
+  }
+
+  // dirent会存储文件的各种属性
+  struct dirent* d_ent = NULL;
+
+  // linux每个目录下面都有一个"."和".."要把这两个都去掉
+  char dot[3] = ".";
+  char dotdot[6] = "..";
+
+  // 一行一行的读目录下的东西,这个东西的属性放到dirent的变量中
+  while ( (d_ent = readdir(dir)) != NULL )
+  {
+    // 忽略 "." 和 ".."
+    if ( (strcmp(d_ent->d_name, dot) != 0) && (strcmp(d_ent->d_name, dotdot) != 0) )
+    {
+      // d_type可以看到当前的东西的类型,DT_DIR代表当前都到的是目录,在usr/include/dirent.h中定义的
+      if ( d_ent->d_type != DT_DIR)
+      {
+        string d_name(d_ent->d_name);
+        if (strcmp(d_name.c_str () + d_name.length () - m_ext.length(), m_ext.c_str ()) == 0)
+        {
+          string file_name = string(d_ent->d_name);
+          int size = file_name.length();
+          file_name.resize(size - m_ext.length());
+          result.push_back(file_name );
+        }
+      }
+    }
+  }
+
+  // sort the returned files
+  sort(result.begin(), result.end());
+
+  closedir(dir);
+  return result;
+}
+
 
 dberr_t ExecuteEngine::Execute(pSyntaxNode ast, ExecuteContext *context) {
   if (ast == nullptr) {
