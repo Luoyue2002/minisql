@@ -12,12 +12,16 @@ ExecuteEngine::ExecuteEngine() {
     const std::string ext = ".db";
     //创建文件夹
     if(access(temp.c_str(),0) == 0){
-      cout << "exist "<< endl;
+//      cout << "exist "<< endl;
     }
     else{
       mkdir(temp.c_str(),S_IRWXG);
-      cout << "create"<< endl;
+//      cout << "create"<< endl;
     }
+
+    //welcome to minisql!
+
+    cout << "welcome to our minisql" <<endl;
     // 进入目录读文件
     vector<string> file_name  = GetFiles(temp.c_str(), ext.c_str());
     // ------------------------test
