@@ -60,8 +60,14 @@ int main(int argc, char **argv) {
     // parse result handle
     if (MinisqlParserGetError()) {
       // error
+      printf("error! \n");
       printf("%s\n", MinisqlParserGetErrorMessage());
     } else {
+
+      printf("[INFO] Sql syntax parse ok!\n");
+      SyntaxTreePrinter printer(MinisqlGetParserRootNode());
+      printer.PrintTree(syntax_tree_file_mgr[syntax_tree_id++]);
+
 #ifdef ENABLE_PARSER_DEBUG
       printf("[INFO] Sql syntax parse ok!\n");
       SyntaxTreePrinter printer(MinisqlGetParserRootNode());

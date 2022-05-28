@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <algorithm>
 #include "glog/logging.h"
+#include <iostream>
+#include <fstream>
 
 ExecuteEngine::ExecuteEngine() {
     const std::string temp = "../../database";
@@ -32,7 +34,9 @@ ExecuteEngine::ExecuteEngine() {
     }
     if(!file_name.empty()) {
       for (file_name_it = file_name.begin(); file_name_it != file_name.end(); file_name_it++) {
-        DBStorageEngine *storage_engine_ = new DBStorageEngine(*file_name_it, true, DEFAULT_BUFFER_POOL_SIZE);
+        printf("%s\n",file_name_it->c_str());
+        DBStorageEngine *storage_engine_ = new DBStorageEngine(file_name_it->c_str(), true, DEFAULT_BUFFER_POOL_SIZE);
+
         dbs_.emplace(*file_name_it, storage_engine_);
       }
     }
@@ -80,7 +84,8 @@ vector<string> ExecuteEngine::GetFiles(const char *src_dir, const char *ext)
       if ( d_ent->d_type != DT_DIR)
       {
         string d_name(d_ent->d_name);
-        if (strcmp(d_name.c_str () + d_name.length () - m_ext.length(), m_ext.c_str ()) == 0)
+//        string d_ext =  d_name.c_str () + d_name.length ();
+        if (strcmp(d_name.c_str () + d_name.length () - m_ext.length(), m_ext.c_str ()) == 0  )
         {
           string file_name = string(d_ent->d_name);
           int size = file_name.length();
@@ -100,6 +105,7 @@ vector<string> ExecuteEngine::GetFiles(const char *src_dir, const char *ext)
 
 
 dberr_t ExecuteEngine::Execute(pSyntaxNode ast, ExecuteContext *context) {
+  printf("Execute prepare\n");
   if (ast == nullptr) {
     return DB_FAILED;
   }
@@ -152,6 +158,26 @@ dberr_t ExecuteEngine::ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *co
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteCreateDatabase" << std::endl;
 #endif
+  if(ast->child_->type_ == kNodeIdentifier){
+    pSyntaxNode db_name_node = ast->child_;
+    std::string db_name = string (db_name_node->val_);
+    // cd
+    chdir("../../database");
+    // create db file
+    ofstream File;
+    File.open( db_name +".db",ios::out|ios::app);
+    if(File.is_open()){
+//      cout<<"创建成功.\n"<<endl;
+    }
+    File.close();
+
+    DBStorageEngine *storage_engine_ = new DBStorageEngine(db_name.c_str(), true, DEFAULT_BUFFER_POOL_SIZE);
+    dbs_.emplace(db_name, storage_engine_);
+    printf("create success!\n");
+    return  DB_SUCCESS;
+  }
+
+
   return DB_FAILED;
 }
 
@@ -166,7 +192,22 @@ dberr_t ExecuteEngine::ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *con
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteShowDatabases" << std::endl;
 #endif
-  return DB_FAILED;
+  unordered_map<std::string, DBStorageEngine *>::iterator dbs_it  ;
+  if(dbs_.empty()){
+    printf("no database\n");
+  }
+
+  if(!dbs_.empty()) {
+    for (dbs_it  = dbs_.begin(); dbs_it  != dbs_.end(); dbs_it ++) {
+      string db_name = dbs_it->first;
+      printf("%s\n", db_name.c_str());
+
+    }
+  }
+
+
+
+  return DB_SUCCESS;
 }
 
 dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *context) {
