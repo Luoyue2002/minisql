@@ -28,18 +28,25 @@ ExecuteEngine::ExecuteEngine() {
     vector<string> file_name  = GetFiles(temp.c_str(), ext.c_str());
     // ------------------------test
     vector<string>::iterator file_name_it  ;
-    for (file_name_it = file_name.begin(); file_name_it != file_name.end(); file_name_it++) {
-      cout << *file_name_it << " " << endl;
 
-    }
     if(!file_name.empty()) {
       for (file_name_it = file_name.begin(); file_name_it != file_name.end(); file_name_it++) {
         printf("%s\n",file_name_it->c_str());
-        DBStorageEngine *storage_engine_ = new DBStorageEngine(file_name_it->c_str(), true, DEFAULT_BUFFER_POOL_SIZE);
+        string db_name = *file_name_it + ".db";
+//        string db_name = *file_name_it ;
+        DBStorageEngine *storage_engine_ = new DBStorageEngine(db_name.c_str(), true, DEFAULT_BUFFER_POOL_SIZE);
 
         dbs_.emplace(*file_name_it, storage_engine_);
       }
     }
+
+
+    for (file_name_it = file_name.begin(); file_name_it != file_name.end(); file_name_it++) {
+      cout << *file_name_it << " test " << endl;
+      //
+    }
+    // cd
+        chdir("../../database");
 
 }
 
@@ -90,6 +97,7 @@ vector<string> ExecuteEngine::GetFiles(const char *src_dir, const char *ext)
           string file_name = string(d_ent->d_name);
           int size = file_name.length();
           file_name.resize(size - m_ext.length());
+          file_name.resize(size );
           result.push_back(file_name );
         }
       }
@@ -161,17 +169,14 @@ dberr_t ExecuteEngine::ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *co
   if(ast->child_->type_ == kNodeIdentifier){
     pSyntaxNode db_name_node = ast->child_;
     std::string db_name = string (db_name_node->val_);
-    // cd
-    chdir("../../database");
+
     // create db file
     ofstream File;
-    File.open( db_name +".db",ios::out|ios::app);
-    if(File.is_open()){
-//      cout<<"创建成功.\n"<<endl;
-    }
-    File.close();
+    string  db_name_db = db_name +".db";
+//    File.open( db_name,ios::out|ios::app);
+//    File.close();
 
-    DBStorageEngine *storage_engine_ = new DBStorageEngine(db_name.c_str(), true, DEFAULT_BUFFER_POOL_SIZE);
+    DBStorageEngine *storage_engine_ = new DBStorageEngine(db_name_db.c_str(), true, DEFAULT_BUFFER_POOL_SIZE);
     dbs_.emplace(db_name, storage_engine_);
     printf("create success!\n");
     return  DB_SUCCESS;
@@ -185,7 +190,18 @@ dberr_t ExecuteEngine::ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *cont
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteDropDatabase" << std::endl;
 #endif
-  return DB_FAILED;
+  pSyntaxNode db_name_node = ast->child_;
+  std::string db_name = string (db_name_node->val_);
+  if(dbs_.find(db_name)!=dbs_.end()){
+    dbs_.erase(db_name);
+//    if(current_db_ == db_name){
+//      current_db_ == dbs_.begin()->first;
+//    }
+    return  DB_SUCCESS;
+  }
+  printf("no such database\n");
+  return  DB_FAILED;
+
 }
 
 dberr_t ExecuteEngine::ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *context) {
@@ -198,11 +214,19 @@ dberr_t ExecuteEngine::ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *con
   }
 
   if(!dbs_.empty()) {
+    printf("|----------------------|\n");
+    printf("|  show databases      |\n");
+    printf("|----------------------|\n");
     for (dbs_it  = dbs_.begin(); dbs_it  != dbs_.end(); dbs_it ++) {
       string db_name = dbs_it->first;
-      printf("%s\n", db_name.c_str());
-
+      printf("| ");
+      printf("%s", db_name.c_str());
+      for(int i=20-db_name.length();i>=0; i--){
+        printf(" ");
+      }
+      printf("|\n");
     }
+    printf("|--------------------- |\n");
   }
 
 
@@ -214,7 +238,14 @@ dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *conte
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteUseDatabase" << std::endl;
 #endif
-  return DB_FAILED;
+  pSyntaxNode db_name_node = ast->child_;
+  std::string db_name = string (db_name_node->val_);
+  if(dbs_.find(db_name)!=dbs_.end()){
+    current_db_ = db_name;
+    return  DB_SUCCESS;
+  }
+  return  DB_FAILED;
+
 }
 
 dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *context) {
