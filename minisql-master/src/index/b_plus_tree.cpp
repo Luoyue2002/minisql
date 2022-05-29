@@ -784,3 +784,9 @@ class BPlusTree<GenericKey<32>, RowId, GenericComparator<32>>;
 
 template
 class BPlusTree<GenericKey<64>, RowId, GenericComparator<64>>;
+
+template
+class BPlusTree<GenericKey<128>, RowId, GenericComparator<128>>;
+
+template
+class BPlusTree<GenericKey<256>, RowId, GenericComparator<256>>;
