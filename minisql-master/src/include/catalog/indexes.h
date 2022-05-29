@@ -77,7 +77,6 @@ public:
   }
 
   inline Index *GetIndex() { 
-    // index_->
     return index_; 
   }
 
@@ -110,7 +109,7 @@ private:
     
     // printf("size::   %d\n",Max_size);
     Max_size = ROUND_UP(Max_size);
-    printf("size::   %d\n",Max_size);
+    // printf("size::   %d\n",Max_size);
     switch (Max_size)
     {
       case 16: return ALLOC_P(heap_, BPindex<16>)(cur_index_id, key_schema_, buffer_pool_manager);
