@@ -50,6 +50,9 @@ private:
 /**
  * The IndexInfo class maintains metadata about a index.
  */
+template <size_t N>
+using BPindex = BPlusTreeIndex<GenericKey<N>, RowId, GenericComparator<N>>;
+
 class IndexInfo {
 public:
   static IndexInfo *Create(MemHeap *heap) {
@@ -65,7 +68,12 @@ public:
     // Step1: init index metadata and table info
     // Step2: mapping index key to key schema
     // Step3: call CreateIndex to create the index
-    ASSERT(false, "Not Implemented yet.");
+    table_info_ = table_info;
+    meta_data_ = meta_data;
+    TableSchema *table_schema = table_info->GetSchema();
+    key_schema_ = Schema::ShallowCopySchema(table_schema, meta_data->key_map_, heap_);
+    index_ = CreateIndex(buffer_pool_manager);
+
   }
 
   inline Index *GetIndex() { return index_; }
@@ -83,8 +91,33 @@ private:
                          key_schema_{nullptr}, heap_(new SimpleMemHeap()) {}
 
   Index *CreateIndex(BufferPoolManager *buffer_pool_manager) {
-    ASSERT(false, "Not Implemented yet.");
-    return nullptr;
+    //
+    uint32_t Max_size = 8;
+
+    for(long unsigned int it = 0; it<key_schema_->GetColumns().size(); it++){
+      Max_size += (key_schema_->GetColumns())[it]->GetLength();
+    }
+    // using INDEX_KEY_TYPE = GenericKey<Max_size>;
+    // using INDEX_COMPARATOR_TYPE = GenericComparator<Max_size>;
+    // using BP_TREE_INDEX = BPlusTreeIndex<INDEX_KEY_TYPE, RowId, INDEX_COMPARATOR_TYPE>;
+
+    index_id_t cur_index_id = meta_data_->GetIndexId();
+    #define ROUND_UP(N) \
+      (N<=8)?16:(N<=24?32:(N<=56?64:(N<=120?128:(N<=248?256:-1))))
+    
+    Max_size = ROUND_UP(Max_size);
+
+    switch (Max_size)
+    {
+      case 16: return ALLOC_P(heap_, BPindex<16>)(cur_index_id, key_schema_, buffer_pool_manager);
+      case 32: return ALLOC_P(heap_, BPindex<32>)(cur_index_id, key_schema_, buffer_pool_manager);
+      case 64: return ALLOC_P(heap_, BPindex<64>)(cur_index_id, key_schema_, buffer_pool_manager);
+      // case 128: return ALLOC_P(heap_, BPindex<128>)(cur_index_id, key_schema_, buffer_pool_manager);
+      // case 256: return ALLOC_P(heap_, BPindex<256>)(cur_index_id, key_schema_, buffer_pool_manager);
+      default:return nullptr;
+    }
+      
+    
   }
 
 private:
@@ -96,4 +129,5 @@ private:
 };
 
 #endif //MINISQL_INDEXES_H
+
 
