@@ -24,9 +24,6 @@ uint32_t Schema::GetSerializedSize() const {
 }
 
 uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema, MemHeap *heap) {
-  if (schema != nullptr) {
-    return 0;
-  }
 
   uint32_t MAGIC_NUM = MACH_READ_FROM(uint32_t, buf);
   if (MAGIC_NUM != 200715) return 0;
@@ -36,6 +33,7 @@ uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema, MemHeap *heap) {
   std::vector<Column *> columns;
   Column* temp;
   for(u_int32_t i = 0; i < len; i++) {
+    temp = nullptr;
     buf += Column::DeserializeFrom(buf, temp, heap);
     columns.push_back(temp);
   }
