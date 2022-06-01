@@ -103,14 +103,16 @@ CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManag
     catalog_meta_ = CatalogMeta::DeserializeFrom(META_PAGE->GetData(), heap_);
     std::map<table_id_t, page_id_t> *gotTablePages = catalog_meta_->GetTableMetaPages();
     for(auto it = gotTablePages->begin(); it != gotTablePages->end(); it++){
-    // printf("WTTTTTFFF2\n");
       if(it->second != INVALID_PAGE_ID)
         LoadTable(it->first, it->second);
     }
     std::map<index_id_t, page_id_t> *gotIndexPages = catalog_meta_->GetIndexMetaPages();
     for(auto it = gotIndexPages->begin(); it != gotIndexPages->end(); it++){
-      if(it->second != INVALID_PAGE_ID)
+      if(it->second != INVALID_PAGE_ID){
+
+        // printf("TEMP\n");
         LoadIndex(it->first, it->second);
+      }
     }
     next_table_id_ = catalog_meta_->GetNextTableId();
     next_index_id_ = catalog_meta_->GetNextIndexId();
@@ -363,7 +365,7 @@ dberr_t CatalogManager::FlushCatalogMetaPage() const {
 }
 
 dberr_t CatalogManager::LoadTable(const table_id_t table_id, const page_id_t page_id) {
-  // printf("WTF?\n");
+
   Page *table_page = buffer_pool_manager_->FetchPage(page_id); // fetch the saved page
   if(table_page == nullptr){
     return DB_FAILED; // File Damaged
@@ -373,7 +375,6 @@ dberr_t CatalogManager::LoadTable(const table_id_t table_id, const page_id_t pag
   TableHeap *cur_table_heap = nullptr;
   cur_table = TableInfo::Create(heap_);
   TableMetadata::DeserializeFrom(table_page->GetData(), cur_table_meta, cur_table->GetMemHeap());
-
   if(cur_table_meta == nullptr){
     return DB_FAILED; // there is problem with serialization and de
   }
@@ -391,7 +392,6 @@ dberr_t CatalogManager::LoadTable(const table_id_t table_id, const page_id_t pag
 }
 
 dberr_t CatalogManager::LoadIndex(const index_id_t index_id, const page_id_t page_id) {
-  // printf("WTF\n");
   Page *index_page = buffer_pool_manager_->FetchPage(page_id); // fetch the saved page
   if(index_page == nullptr){
     return DB_FAILED; // File Damaged
@@ -409,8 +409,9 @@ dberr_t CatalogManager::LoadIndex(const index_id_t index_id, const page_id_t pag
   
   cur_table_id = cur_index_meta->GetTableId();
   cur_table_name = tables_.find(cur_table_id)->second->GetTableName();
-  cur_index->Init(cur_index_meta, tables_.find(cur_table_id)->second, buffer_pool_manager_);
-
+  TableInfo *cur_table = tables_.find(cur_table_id)->second;
+  
+  cur_index->Init(cur_index_meta, cur_table, buffer_pool_manager_);
   index_names_[cur_table_name].emplace(cur_index_meta->GetIndexName(), index_id);
   indexes_.emplace(index_id, cur_index);
   buffer_pool_manager_->UnpinPage(page_id, false);

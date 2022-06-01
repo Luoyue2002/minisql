@@ -71,14 +71,14 @@ public:
     table_info_ = table_info;
     meta_data_ = meta_data;
     TableSchema *table_schema = table_info->GetSchema();
-    key_schema_ = Schema::ShallowCopySchema(table_schema, meta_data->key_map_, heap_);
+    key_schema_ = Schema::ShallowCopySchema(table_schema, meta_data->GetKeyMapping(), heap_);
     index_ = CreateIndex(buffer_pool_manager);
-
+    
   }
 
-  inline Index *GetIndex() {
-//    printf("index print\n");
-    return index_; }
+  inline Index *GetIndex() { 
+    return index_; 
+  }
 
   inline std::string GetIndexName() { return meta_data_->GetIndexName(); }
 
@@ -107,19 +107,21 @@ private:
     #define ROUND_UP(N) \
       (N<=8)?16:(N<=24?32:(N<=56?64:(N<=120?128:(N<=248?256:-1))))
     
+    // printf("size::   %d\n",Max_size);
     Max_size = ROUND_UP(Max_size);
-
+    // printf("size::   %d\n",Max_size);
     switch (Max_size)
     {
       case 16: return ALLOC_P(heap_, BPindex<16>)(cur_index_id, key_schema_, buffer_pool_manager);
       case 32: return ALLOC_P(heap_, BPindex<32>)(cur_index_id, key_schema_, buffer_pool_manager);
       case 64: return ALLOC_P(heap_, BPindex<64>)(cur_index_id, key_schema_, buffer_pool_manager);
-      // case 128: return ALLOC_P(heap_, BPindex<128>)(cur_index_id, key_schema_, buffer_pool_manager);
-      // case 256: return ALLOC_P(heap_, BPindex<256>)(cur_index_id, key_schema_, buffer_pool_manager);
-      default:return nullptr;
+      case 128: return ALLOC_P(heap_, BPindex<128>)(cur_index_id, key_schema_, buffer_pool_manager);
+      case 256: return ALLOC_P(heap_, BPindex<256>)(cur_index_id, key_schema_, buffer_pool_manager);
+      default:
+              printf("Too long!\n");
+              return nullptr;
     }
-      
-    
+
   }
 
 private:
