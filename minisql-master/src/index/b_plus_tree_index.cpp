@@ -12,6 +12,7 @@ BPLUSTREE_INDEX_TYPE::BPlusTreeIndex(index_id_t index_id, IndexSchema *key_schem
 
 INDEX_TEMPLATE_ARGUMENTS
 dberr_t BPLUSTREE_INDEX_TYPE::InsertEntry(const Row &key, RowId row_id, Transaction *txn) {
+//  printf("insert start\n");
   ASSERT(row_id.Get() != INVALID_ROWID.Get(), "Invalid row id for index insert.");
   KeyType index_key;
   index_key.SerializeFromKey(key, key_schema_);

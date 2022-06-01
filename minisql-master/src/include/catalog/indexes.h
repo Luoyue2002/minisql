@@ -76,7 +76,9 @@ public:
 
   }
 
-  inline Index *GetIndex() { return index_; }
+  inline Index *GetIndex() {
+//    printf("index print\n");
+    return index_; }
 
   inline std::string GetIndexName() { return meta_data_->GetIndexName(); }
 

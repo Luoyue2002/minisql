@@ -20,6 +20,10 @@ BPLUSTREE_TYPE::BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_ma
           comparator_(comparator),
           leaf_max_size_(leaf_max_size),
           internal_max_size_(internal_max_size) {
+  IndexRootsPage *index_root_page=reinterpret_cast<IndexRootsPage*>(buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID));
+  page_id_t root_page_id;
+  bool flag = index_root_page->GetRootId(index_id,&root_page_id);
+  if(flag==true) root_page_id_ = root_page_id;
 
 
 }
@@ -229,10 +233,10 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
         ///UpdateRootPageId
         UpdateRootPageId(0);
         //debug
-        int value1 = new_root_node->ValueAt(0);
-        int value2 = new_root_node->ValueAt(1);
-        if(value1){} ;
-        if(value2){} ;
+//        int value1 = new_root_node->ValueAt(0);
+//        int value2 = new_root_node->ValueAt(1);
+//        if(value1){} ;
+//        if(value2){} ;
         buffer_pool_manager_->UnpinPage(new_root_page_id , true);
         return ;
     }
@@ -249,7 +253,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
             ///调用的spilt node 又unpin了一下 , check all unpin 有 22 的后遗症..
             buffer_pool_manager_->UnpinPage(new_split_node->GetPageId() , true);
         }
-        if(now_size <=parent_node->GetMaxSize()){
+        if(now_size <= parent_node->GetMaxSize()){
 
         }
         // else do nothing
