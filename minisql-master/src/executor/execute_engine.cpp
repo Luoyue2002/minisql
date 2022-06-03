@@ -244,6 +244,9 @@ dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *conte
     current_db_ = db_name;
     return  DB_SUCCESS;
   }
+  else{
+    printf("no such database");
+  }
   return  DB_FAILED;
 
 }
@@ -252,17 +255,95 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteShowTables" << std::endl;
 #endif
-  return DB_FAILED;
+  printf("|----------------------|\n");
+  printf("|  show tables         |\n");
+  printf("|----------------------|\n");
+  vector<TableInfo* > tables_now;
+  DBStorageEngine * current_db_engine = dbs_[current_db_];
+  current_db_engine->catalog_mgr_->GetTables(tables_now);
+  for(auto table_it=tables_now.begin();table_it<tables_now.end();table_it++){
+    string table_name = (*table_it)->GetTableName();
+    printf("| ");
+    printf("%s", table_name.c_str());
+    for(int i=20-table_name.length();i>=0; i--){
+      printf(" ");
+    }
+    printf("|\n");
+  }
+  return DB_SUCCESS;
+//  return DB_FAILED;
 }
 
 dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *context) {
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteCreateTable" << std::endl;
 #endif
+  DBStorageEngine * current_db_engine = dbs_[current_db_];
   pSyntaxNode table_name_node = ast->child_;
   string table_name = table_name_node->val_;
 
-  return DB_FAILED;
+  vector<Column*>column_;
+  pSyntaxNode column_attribute_now = table_name_node->next_->child_;
+
+  while( column_attribute_now->next_ != nullptr && column_attribute_now->type_==kNodeColumnDefinition ){
+    // is unique?
+    bool  unique = false;
+    string is_unique = column_attribute_now->val_;
+    if(is_unique == "unique"){
+      unique = true;
+    }
+    string column_name = column_attribute_now->child_->val_;
+    string column_type = column_attribute_now->child_->next_->val_;
+    int index=0;
+    Column * now_column;
+    if( column_type == "int"){
+      now_column = new Column(column_name,kTypeInt, index, true, unique);
+    }
+    else if(column_type=="char"){
+
+      uint32_t length = atoi(column_attribute_now->child_->next_->child_->val_);
+      now_column = new Column(column_name,kTypeChar,length, index, true, unique);
+    }
+    else if(column_type=="float"){
+
+      now_column = new Column(column_name,kTypeFloat,index,true,unique);
+    }
+    else{
+      printf("no such type!\n");
+      return DB_FAILED;
+    }
+    column_.push_back(now_column);
+    column_attribute_now = column_attribute_now->next_;
+    index++;
+
+
+  }
+  Schema *schema_now = new Schema(column_);
+  TableInfo *table_info = nullptr;
+  //cout<<"SUCCEED!"<<endl;
+  dberr_t Created = current_db_engine->catalog_mgr_->CreateTable(table_name,schema_now,nullptr,table_info);
+  if(Created == DB_TABLE_ALREADY_EXIST){
+    printf("db table already exist\n");
+    return DB_TABLE_ALREADY_EXIST;
+  }
+  // get pk
+  if(column_attribute_now!= nullptr && column_attribute_now->type_ == kNodeColumnList){
+    pSyntaxNode PK_node = column_attribute_now->child_;
+    vector <string>PK;
+    while(PK_node!=nullptr){
+      string PK_name = PK_node->val_ ;
+      PK.push_back(PK_name);
+      PK_node = PK_node->next_;
+    }
+    CatalogManager* current_catalog = current_db_engine->catalog_mgr_;
+    IndexInfo* index_info=nullptr;
+
+    current_catalog->CreateIndex(table_name,table_name+"_PK",PK,nullptr,index_info);
+
+  }
+
+  return DB_TABLE_NOT_EXIST;
+//  return DB_SUCCESS;
 }
 
 dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context) {
