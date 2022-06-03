@@ -68,7 +68,7 @@ int B_PLUS_TREE_LEAF_PAGE_TYPE::KeyIndex(const KeyType &key, const KeyComparator
         left = mid + 1;
       }
     }
-    int result = left;
+    int result = right + 1;
     return result;
 }
 

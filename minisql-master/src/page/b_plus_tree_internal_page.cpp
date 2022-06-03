@@ -103,7 +103,7 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCo
 //    }
     ValueType val{};
     int size = GetSize();
-    int left = 0;
+    int left = 1;
     int right = size - 1;
     while (left <= right) {
       int mid = (right + left) / 2;
