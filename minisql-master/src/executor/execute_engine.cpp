@@ -260,7 +260,16 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
   printf("|----------------------|\n");
   vector<TableInfo* > tables_now;
   DBStorageEngine * current_db_engine = dbs_[current_db_];
-  current_db_engine->catalog_mgr_->GetTables(tables_now);
+  dberr_t show = current_db_engine->catalog_mgr_->GetTables(tables_now);
+  if(show == DB_TABLE_NOT_EXIST){
+    printf("| ");
+    for(int i=20;i>=0; i--){
+      printf(" ");
+    }
+    printf("|\n");
+    printf("|----------------------|\n");
+    return DB_TABLE_NOT_EXIST;
+  }
   for(auto table_it=tables_now.begin();table_it<tables_now.end();table_it++){
     string table_name = (*table_it)->GetTableName();
     printf("| ");
@@ -270,6 +279,7 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
     }
     printf("|\n");
   }
+  printf("|----------------------|\n");
   return DB_SUCCESS;
 //  return DB_FAILED;
 }
@@ -288,9 +298,12 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
   while( column_attribute_now->next_ != nullptr && column_attribute_now->type_==kNodeColumnDefinition ){
     // is unique?
     bool  unique = false;
-    string is_unique = column_attribute_now->val_;
-    if(is_unique == "unique"){
-      unique = true;
+    if(column_attribute_now->val_ != nullptr){
+      string is_unique = column_attribute_now->val_;
+      printf("ok\n");
+      if(is_unique == "unique" ){
+        unique = true;
+      }
     }
     string column_name = column_attribute_now->child_->val_;
     string column_type = column_attribute_now->child_->next_->val_;
