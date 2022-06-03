@@ -97,7 +97,7 @@ vector<string> ExecuteEngine::GetFiles(const char *src_dir, const char *ext)
           string file_name = string(d_ent->d_name);
           int size = file_name.length();
           file_name.resize(size - m_ext.length());
-          file_name.resize(size );
+//          file_name.resize(size );
           result.push_back(file_name );
         }
       }
@@ -242,7 +242,14 @@ dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *conte
   std::string db_name = string (db_name_node->val_);
   if(dbs_.find(db_name)!=dbs_.end()){
     current_db_ = db_name;
+
+      unordered_map<std::string, DBStorageEngine *>::iterator dbs_it  ;
+      dbs_it = dbs_.find(current_db_);
+      current_db_engine =dbs_it->second;
+
+
     return  DB_SUCCESS;
+
   }
   else{
     printf("no such database");
@@ -259,7 +266,9 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
   printf("|  show tables         |\n");
   printf("|----------------------|\n");
   vector<TableInfo* > tables_now;
-  DBStorageEngine * current_db_engine = dbs_[current_db_];
+//  unordered_map<std::string, DBStorageEngine *>::iterator dbs_it  ;
+//  dbs_it = dbs_.find(current_db_);
+//  DBStorageEngine *  current_db_engine =dbs_it->second;
   dberr_t show = current_db_engine->catalog_mgr_->GetTables(tables_now);
   if(show == DB_TABLE_NOT_EXIST){
     printf("| ");
@@ -288,7 +297,10 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteCreateTable" << std::endl;
 #endif
-  DBStorageEngine * current_db_engine = dbs_[current_db_];
+//  DBStorageEngine * current_db_engine = dbs_[current_db_];
+//  unordered_map<std::string, DBStorageEngine *>::iterator dbs_it  ;
+//  dbs_it = dbs_.find(current_db_);
+//  DBStorageEngine *  current_db_engine =dbs_it->second;
   pSyntaxNode table_name_node = ast->child_;
   string table_name = table_name_node->val_;
 
@@ -363,7 +375,7 @@ dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteDropTable" << std::endl;
 #endif
-  DBStorageEngine * current_db_engine = dbs_[current_db_];
+//  DBStorageEngine * current_db_engine ;
   dberr_t Dropped=current_db_engine->catalog_mgr_->DropTable(ast->child_->val_);
   if(Dropped==DB_TABLE_NOT_EXIST){
     printf("db table not exist!\n");

@@ -85,6 +85,7 @@ private:
 private:
   [[maybe_unused]] std::unordered_map<std::string, DBStorageEngine *> dbs_;  /** all opened databases */
   [[maybe_unused]] std::string current_db_;  /** current database */
+  DBStorageEngine *  current_db_engine;
 };
 
 #endif //MINISQL_EXECUTE_ENGINE_H
