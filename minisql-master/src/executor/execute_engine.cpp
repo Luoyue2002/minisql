@@ -259,6 +259,9 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteCreateTable" << std::endl;
 #endif
+  pSyntaxNode table_name_node = ast->child_;
+  string table_name = table_name_node->val_;
+
   return DB_FAILED;
 }
 

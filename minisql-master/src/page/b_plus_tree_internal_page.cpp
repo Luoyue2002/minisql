@@ -76,41 +76,44 @@ ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const {
  * that contains input "key"
  * Start the search from the second key(the first key should always be invalid)
  */
-/// I think this part will cause some problem
+
 INDEX_TEMPLATE_ARGUMENTS
 ValueType B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyComparator &comparator) const {
   // replace with your own code
     ///Start the search from the second key(the first key should always be invalid)
-    ValueType val{};
-    if(comparator(key, array_[1].first) <0 ){
-      val = array_[0].second;
-        return val;
-    }
-    if(comparator(key, array_[GetSize()-1].first) >=0 ){
-        val = array_[GetSize()-1].second;
-        return val;
-    }
-    for(int key_index = 1 ; key_index < GetSize(); key_index++){
-        //key_index < GetSize()-1 this because if key_index < GetSize() ,index+1 does not exist
-        if ((comparator(key, array_[key_index].first) < 0)){
-            //find
-            val = array_[key_index-1].second;
-            break ;
-
-        }
-//        else if ((comparator(key, array_[key_index].first) > 0) && (comparator(key, array_[key_index+1].first) < 0)){
-//        //find
-//            ValueType val = array_[key_index].second;
-//            return val;
+//    ValueType val{};
+//    if(comparator(key, array_[1].first) <0 ){
+//      val = array_[0].second;
+//        return val;
+//    }
+//    if(comparator(key, array_[GetSize()-1].first) >=0 ){
+//        val = array_[GetSize()-1].second;
+//        return val;
+//    }
+//    for(int key_index = 1 ; key_index < GetSize(); key_index++){
+//        //key_index < GetSize()-1 this because if key_index < GetSize() ,index+1 does not exist
+//        if ((comparator(key, array_[key_index].first) < 0)){
+//            //find
+//            val = array_[key_index-1].second;
+//            break ;
+//
 //        }
 //
-//        else if ( (comparator(key, array_[key_index+1].first) == 0)){
-//            //find
-//            ValueType val = array_[key_index+1].second;
-//            return val;
-//        }
-
+//
+//    }
+    ValueType val{};
+    int size = GetSize();
+    int left = 0;
+    int right = size - 1;
+    while (left <= right) {
+      int mid = (right + left) / 2;
+      if (comparator(KeyAt(mid),key)>0) {
+        right = mid - 1;
+      } else {
+        left = mid + 1;
+      }
     }
+    val = array_[left-1].second;
     return val;
 }
 

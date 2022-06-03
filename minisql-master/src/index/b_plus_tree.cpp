@@ -22,8 +22,10 @@ BPLUSTREE_TYPE::BPlusTree(index_id_t index_id, BufferPoolManager *buffer_pool_ma
           internal_max_size_(internal_max_size) {
   IndexRootsPage *index_root_page=reinterpret_cast<IndexRootsPage*>(buffer_pool_manager_->FetchPage(INDEX_ROOTS_PAGE_ID));
   page_id_t root_page_id;
-  bool flag = index_root_page->GetRootId(index_id,&root_page_id);
-  if(flag==true) root_page_id_ = root_page_id;
+  bool update = index_root_page->GetRootId(index_id,&root_page_id);
+  if(update) {
+    root_page_id_ = root_page_id;
+  }
   buffer_pool_manager_->UnpinPage(INDEX_ROOTS_PAGE_ID, false);
 
 
@@ -559,17 +561,17 @@ INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE BPLUSTREE_TYPE::End() {
   /// 遍历叶子
   KeyType key{};
-  Page * leaf_page_ = FindLeafPage(key, true);
+  Page * leaf_page_ = FindLeafPage(key, false, true);
   LeafPage * leaf_node_= reinterpret_cast<LeafPage *>( leaf_page_->GetData());
-  page_id_t next_node_page_id_ = leaf_node_->GetNextPageId() ;
-  while(next_node_page_id_!=INVALID_PAGE_ID){
-    next_node_page_id_=leaf_node_->GetNextPageId();
-    buffer_pool_manager_->UnpinPage(leaf_node_->GetPageId(),false);
-    Page * next_node_page = buffer_pool_manager_->FetchPage(next_node_page_id_);
-    leaf_page_ = next_node_page;
-    leaf_node_=reinterpret_cast<LeafPage *>(leaf_page_->GetData() );
-    next_node_page_id_ = leaf_node_->GetNextPageId() ;
-  }
+//  page_id_t next_node_page_id_ = leaf_node_->GetNextPageId() ;
+//  while(next_node_page_id_!=INVALID_PAGE_ID){
+//    next_node_page_id_=leaf_node_->GetNextPageId();
+//    buffer_pool_manager_->UnpinPage(leaf_node_->GetPageId(),false);
+//    Page * next_node_page = buffer_pool_manager_->FetchPage(next_node_page_id_);
+//    leaf_page_ = next_node_page;
+//    leaf_node_=reinterpret_cast<LeafPage *>(leaf_page_->GetData() );
+//    next_node_page_id_ = leaf_node_->GetNextPageId() ;
+//  }
 
   return INDEXITERATOR_TYPE(buffer_pool_manager_,leaf_page_,leaf_node_->GetSize());
   /// 迭代器的end 是要指向最后之后的
@@ -584,7 +586,7 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::End() {
  * Note: the leaf page is pinned, you need to unpin it after use.
  */
 INDEX_TEMPLATE_ARGUMENTS
-Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
+Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost,bool rightMost) {
     if (IsEmpty()) {
         return nullptr;
     }
@@ -598,6 +600,10 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
         page_id_t child_node_page_id_;
         if(leftMost){
             child_node_page_id_ = Internal_node_now_->ValueAt(0);
+
+        }
+        else if(rightMost){
+          child_node_page_id_ = Internal_node_now_->ValueAt(Internal_node_now_->GetSize() - 1);
 
         }
         else{

@@ -42,19 +42,34 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 int B_PLUS_TREE_LEAF_PAGE_TYPE::KeyIndex(const KeyType &key, const KeyComparator &comparator) const {
-    int i;
-    int k = GetSize();
-    if(k == 0)
-      return  0;
-    if((comparator( key,array_[k-1].first) > 0)){
-      return  k;
-    }
+//    int i;
+//    int k = GetSize();
+//    if(k == 0)
+//      return  0;
+//    if((comparator( key,array_[k-1].first) > 0)){
+//      return  k;
+//    }
+//
+//    for(i=0 ; i< k; i++){
+//        if(comparator( key,array_[i].first) <= 0)
+//            return  i;
+//    }
+//    return -1;
+//
 
-    for(i=0 ; i< k; i++){
-        if(comparator( key,array_[i].first) <= 0)
-            return  i;
+    int size = GetSize();
+    int left = 0;
+    int right = size - 1;
+    while (left <= right) {
+      int mid = (right + left) / 2;
+      if (comparator(KeyAt(mid),key)>=0) {
+        right = mid - 1;
+      } else {
+        left = mid + 1;
+      }
     }
-    return -1;
+    int result = left;
+    return result;
 }
 
 /*
