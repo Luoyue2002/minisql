@@ -350,7 +350,14 @@ dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteDropTable" << std::endl;
 #endif
-  return DB_FAILED;
+  DBStorageEngine * current_db_engine = dbs_[current_db_];
+  dberr_t Dropped=current_db_engine->catalog_mgr_->DropTable(ast->child_->val_);
+  if(Dropped==DB_TABLE_NOT_EXIST){
+    printf("db table not exist!\n");
+    return DB_TABLE_NOT_EXIST;
+  }
+  return DB_SUCCESS;
+//  return DB_FAILED;
 }
 
 dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *context) {
