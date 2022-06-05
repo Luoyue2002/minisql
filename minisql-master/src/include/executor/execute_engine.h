@@ -42,18 +42,19 @@ public:
   /// get .db file
 
 private:
+  // done
   dberr_t ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *context);
-
+  // done, 但为什么删了以后数据库文件还在
   dberr_t ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *context);
-
+  // done
   dberr_t ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *context);
-
+  // done
   dberr_t ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *context);
-
+  // done
   dberr_t ExecuteShowTables(pSyntaxNode ast, ExecuteContext *context);
-
+  // done
   dberr_t ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *context);
-
+  // done
   dberr_t ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context);
 
   dberr_t ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *context);

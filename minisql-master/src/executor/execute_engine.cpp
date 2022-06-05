@@ -49,6 +49,8 @@ ExecuteEngine::ExecuteEngine() {
       //
     }
 
+    current_db_engine = NULL;
+
 }
 
 /************************************************************
@@ -163,6 +165,17 @@ dberr_t ExecuteEngine::Execute(pSyntaxNode ast, ExecuteContext *context) {
   return DB_FAILED;
 }
 
+// ======================== helping function ======================== //
+
+static void PrintNode(pSyntaxNode ast, int level) {
+  if(ast == NULL) return;
+  printf("level: %d, %s\n", level , ast->val_);
+  PrintNode(ast->child_, level+1);
+  PrintNode(ast->next_, level);
+}
+
+// ======================== helping function ======================== //
+
 dberr_t ExecuteEngine::ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *context) {
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteCreateDatabase" << std::endl;
@@ -263,6 +276,12 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteShowTables" << std::endl;
 #endif
+
+  if(current_db_engine == NULL) {
+    printf("No database used.\n");
+    return DB_FAILED;
+  }
+
   printf("|----------------------|\n");
   printf("|  show tables         |\n");
   printf("|----------------------|\n");
@@ -298,6 +317,12 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteCreateTable" << std::endl;
 #endif
+
+  if(current_db_engine == NULL) {
+    printf("No database used.\n");
+    return DB_FAILED;
+  }
+
 //  DBStorageEngine * current_db_engine = dbs_[current_db_];
 //  unordered_map<std::string, DBStorageEngine *>::iterator dbs_it  ;
 //  dbs_it = dbs_.find(current_db_);
@@ -376,6 +401,12 @@ dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteDropTable" << std::endl;
 #endif
+
+  if(current_db_engine == NULL) {
+    printf("No database used.\n");
+    return DB_FAILED;
+  }
+
 //  DBStorageEngine * current_db_engine ;
   dberr_t Dropped=current_db_engine->catalog_mgr_->DropTable(ast->child_->val_);
   if(Dropped==DB_TABLE_NOT_EXIST){
@@ -390,6 +421,12 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteShowIndexes" << std::endl;
 #endif
+
+  if(current_db_engine == NULL) {
+    printf("No database used.\n");
+    return DB_FAILED;
+  }
+
   return DB_FAILED;
 }
 
@@ -397,6 +434,12 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteCreateIndex" << std::endl;
 #endif
+
+  if(current_db_engine == NULL) {
+    printf("No database used.\n");
+    return DB_FAILED;
+  }
+
   return DB_FAILED;
 }
 
@@ -404,6 +447,12 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteDropIndex" << std::endl;
 #endif
+
+  if(current_db_engine == NULL) {
+    printf("No database used.\n");
+    return DB_FAILED;
+  }
+
   return DB_FAILED;
 }
 
@@ -411,6 +460,12 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteSelect" << std::endl;
 #endif
+
+  if(current_db_engine == NULL) {
+    printf("No database used.\n");
+    return DB_FAILED;
+  }
+
   return DB_FAILED;
 }
 
@@ -418,13 +473,68 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteInsert" << std::endl;
 #endif
-  return DB_FAILED;
+
+  if(current_db_engine == NULL) {
+    printf("No database used.\n");
+    return DB_FAILED;
+  }
+
+  // PrintNode(ast, 0);
+
+  string tablename(ast->child_->val_);
+  TableInfo* tableinf;
+  dberr_t result;
+  // get the table heap to insert
+  result = current_db_engine->catalog_mgr_->GetTable(tablename, tableinf);
+  if (result != DB_SUCCESS) return result;
+  Schema* schema = tableinf->GetSchema();
+  TableHeap* tableheap = TableHeap::Create(current_db_engine->bpm_, tableinf->GetRootPageId(), 
+      schema, nullptr, nullptr, tableinf->GetMemHeap());
+
+  // deal with the date to store
+  vector<Field> field;
+  pSyntaxNode value = ast->child_->next_->child_;
+  for(uint32_t i = 0; i < schema->GetColumnCount(); i++) {
+    if (value == NULL) {
+      // the input value number is too small
+      return DB_FAILED;
+    }
+    TypeId tp = schema->GetColumn(i)->GetType();
+    // push back
+    if (tp == kTypeInt) {
+      int32_t val;
+      sscanf(value->val_, "%d", &val);
+      field.push_back(Field(kTypeInt, val));
+    }
+    else if (tp == kTypeFloat) {
+      float val;
+      sscanf(value->val_, "%f", &val);
+      field.push_back(Field(kTypeFloat, val));
+    }
+    else if(tp == kTypeChar) {
+      field.push_back(Field(kTypeChar, value->val_, strlen(value->val_), true));
+    }
+    else {
+      return DB_FAILED;
+    }
+    value = value->next_;
+  }
+  Row row(field);
+  tableheap->InsertTuple(row, nullptr);
+
+  return DB_SUCCESS;
 }
 
 dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteDelete" << std::endl;
 #endif
+
+  if(current_db_engine == NULL) {
+    printf("No database used.\n");
+    return DB_FAILED;
+  }
+
   return DB_FAILED;
 }
 
@@ -432,6 +542,12 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteUpdate" << std::endl;
 #endif
+
+  if(current_db_engine == NULL) {
+    printf("No database used.\n");
+    return DB_FAILED;
+  }
+
   return DB_FAILED;
 }
 
