@@ -10,7 +10,7 @@
 #include <fstream>
 
 ExecuteEngine::ExecuteEngine() {
-    const std::string temp = "../../database";
+    const std::string temp = "database";
     const std::string ext = ".db";
     //创建文件夹
     if(access(temp.c_str(),0) == 0){
@@ -29,6 +29,9 @@ ExecuteEngine::ExecuteEngine() {
     // ------------------------test
     vector<string>::iterator file_name_it  ;
 
+    // change the cd dir there, to make new DBStorageEngine Work in the path
+    chdir("database");
+
     if(!file_name.empty()) {
       for (file_name_it = file_name.begin(); file_name_it != file_name.end(); file_name_it++) {
         printf("%s\n",file_name_it->c_str());
@@ -45,8 +48,6 @@ ExecuteEngine::ExecuteEngine() {
       cout << *file_name_it << " test " << endl;
       //
     }
-    // cd
-        chdir("../../database");
 
 }
 
@@ -252,7 +253,7 @@ dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *conte
 
   }
   else{
-    printf("no such database");
+    printf("no such database\n");
   }
   return  DB_FAILED;
 

@@ -16,9 +16,10 @@ public:
                            uint32_t buffer_pool_size = DEFAULT_BUFFER_POOL_SIZE)
           : db_file_name_(std::move(db_name)), init_(init) {
     // Init database file if needed
-    if (init_) {
+    if (init) {
       remove(db_file_name_.c_str());
     }
+
     // Initialize components
     disk_mgr_ = new DiskManager(db_file_name_);
     bpm_ = new BufferPoolManager(buffer_pool_size, disk_mgr_);

@@ -102,6 +102,8 @@ CatalogManager::CatalogManager(BufferPoolManager *buffer_pool_manager, LockManag
     META_PAGE->WUnlatch();
     buffer_pool_manager_->UnpinPage(CATALOG_META_PAGE_ID, true);
     // catalog_meta_->SerializeTo(META_PAGE->GetData());
+    // uint32_t a = MACH_READ_FROM(uint32_t, META_PAGE->GetData());
+    // std::cout << "a= " << a << endl;
     next_table_id_=0;
     next_index_id_=0;
   }else{

@@ -97,7 +97,6 @@ void TableHeap::FreeHeap() {
   TablePage* page;
   page_id_t page_id;
 
-  
   while( (page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id_)) ) != nullptr ) {
     // how to make sure that whether the page can hold the row
     /// need to find whether hold by the return value of TablePage::InsertTuple
