@@ -34,7 +34,7 @@ ExecuteEngine::ExecuteEngine() {
         printf("%s\n",file_name_it->c_str());
         string db_name = *file_name_it + ".db";
 //        string db_name = *file_name_it ;
-        DBStorageEngine *storage_engine_ = new DBStorageEngine(db_name.c_str(), true, DEFAULT_BUFFER_POOL_SIZE);
+        DBStorageEngine *storage_engine_ = new DBStorageEngine(db_name.c_str(), false, DEFAULT_BUFFER_POOL_SIZE);
 
         dbs_.emplace(*file_name_it, storage_engine_);
       }
