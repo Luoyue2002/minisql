@@ -9,8 +9,15 @@
 #include <iostream>
 #include <fstream>
 
+extern "C" {
+int yyparse(void);
+//FILE *yyin;
+#include "parser/minisql_lex.h"
+#include "parser/parser.h"
+}
 ExecuteEngine::ExecuteEngine() {
     const std::string temp = "database";
+    const std::string temp_file = "testfile";
     const std::string ext = ".db";
     //创建文件夹
     if(access(temp.c_str(),0) == 0){
@@ -19,6 +26,14 @@ ExecuteEngine::ExecuteEngine() {
     else{
       mkdir(temp.c_str(),S_IRWXG);
 //      cout << "create"<< endl;
+    }
+
+    if(access(temp_file.c_str(),0) == 0){
+      //      cout << "exist "<< endl;
+    }
+    else{
+      mkdir(temp_file.c_str(),S_IRWXG);
+      //      cout << "create"<< endl;
     }
 
     //welcome to minisql!
@@ -487,40 +502,120 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   // get the table heap to insert
   result = current_db_engine->catalog_mgr_->GetTable(tablename, tableinf);
   if (result != DB_SUCCESS) return result;
+
   Schema* schema = tableinf->GetSchema();
-  TableHeap* tableheap = TableHeap::Create(current_db_engine->bpm_, tableinf->GetRootPageId(), 
-      schema, nullptr, nullptr, tableinf->GetMemHeap());
+  TableHeap* tableheap = tableinf->GetTableHeap();
+
 
   // deal with the date to store
-  vector<Field> field;
-  pSyntaxNode value = ast->child_->next_->child_;
+  vector<Field> fields;
+  pSyntaxNode column_node = ast->child_->next_->child_;
   for(uint32_t i = 0; i < schema->GetColumnCount(); i++) {
-    if (value == NULL) {
-      // the input value number is too small
-      return DB_FAILED;
+    if (column_node == NULL) {
+      //has null,其他部分全是空的
+      for ( uint32_t j = i ; j < schema->GetColumnCount(); j ++ ){
+        Field new_field(tableinf->GetSchema()->GetColumn(j)->GetType());
+        fields.push_back(new_field);
+      }
+      break;
+
+//      return DB_FAILED;
     }
+
+
     TypeId tp = schema->GetColumn(i)->GetType();
-    // push back
-    if (tp == kTypeInt) {
-      int32_t val;
-      sscanf(value->val_, "%d", &val);
-      field.push_back(Field(kTypeInt, val));
+    if(column_node->val_==nullptr ){
+      //cout<<"has null!"<<endl;
+      Field new_field(tp);
+      fields.push_back(new_field);
     }
-    else if (tp == kTypeFloat) {
-      float val;
-      sscanf(value->val_, "%f", &val);
-      field.push_back(Field(kTypeFloat, val));
+    else{
+      // push back
+      if (tp == kTypeInt) {
+        int32_t val;
+        sscanf(column_node->val_, "%d", &val);
+        fields.push_back(Field(kTypeInt, val));
+      }
+      else if (tp == kTypeFloat) {
+        float val;
+        sscanf(column_node->val_, "%f", &val);
+        fields.push_back(Field(kTypeFloat, val));
+      }
+      else if(tp == kTypeChar) {
+        fields.push_back(Field(kTypeChar, column_node->val_, strlen(column_node->val_), true));
+      }
+      else {
+        return DB_FAILED;
+      }
     }
-    else if(tp == kTypeChar) {
-      field.push_back(Field(kTypeChar, value->val_, strlen(value->val_), true));
-    }
-    else {
-      return DB_FAILED;
-    }
-    value = value->next_;
+
+    column_node = column_node->next_;
   }
-  Row row(field);
-  tableheap->InsertTuple(row, nullptr);
+  if(column_node!=nullptr){
+    // more
+    printf("too many attributes");
+    return  DB_FAILED;
+  }
+  Row row(fields);
+  bool  inserted = tableheap->InsertTuple(row, nullptr);
+
+  //所有索引维护
+  if(inserted == false){
+    printf("insert failed");
+    return  DB_FAILED;
+  }
+  else{
+    vector <IndexInfo*> all_indexs;
+    current_db_engine->catalog_mgr_->GetTableIndexes(tablename,all_indexs);
+    vector <IndexInfo*> ::iterator  index_it;
+    // get all index
+    for(index_it =all_indexs.begin();index_it<all_indexs.end();index_it++){
+
+      IndexSchema* index_schema = (*index_it)->GetIndexKeySchema();
+      vector<Field> index_fields;
+      for(uint32_t colum_no =0; colum_no < index_schema->GetColumnCount() ;colum_no++){
+
+        Column* column_now = const_cast<Column*>(index_schema->GetColumn(colum_no));
+        index_id_t index_id;
+        if(tableinf->GetSchema()->GetColumnIndex(column_now->GetName(),index_id)==DB_SUCCESS){
+          index_fields.push_back(fields[index_id]);
+        }
+      }
+      Row row_index(index_fields);
+      dberr_t Inserted=(*index_it)->GetIndex()->InsertEntry(row_index,row.GetRowId(),nullptr);
+      if(Inserted==DB_FAILED){
+        // 撤销操作
+
+        printf("insert failed");
+        //把前面插入过的全都撤销掉
+        vector <IndexInfo*> ::iterator  index_it_undo;
+        for(index_it_undo =all_indexs.begin();index_it_undo!=index_it ;index_it_undo++){
+          IndexSchema* index_schema_undo = (*index_it_undo)->GetIndexKeySchema();
+          vector<Field> index_fields_undo;
+          for(uint32_t colum_no_undo =0; colum_no_undo < index_schema_undo->GetColumnCount() ;colum_no_undo++){
+            Column* column_undo = const_cast<Column*>(index_schema_undo->GetColumn(colum_no_undo));
+            index_id_t index_id_undo;
+            if(tableinf->GetSchema()->GetColumnIndex(column_undo->GetName(),index_id_undo)==DB_SUCCESS){
+              index_fields_undo.push_back(fields[index_id_undo]);
+            }
+          }
+          Row index_row_undo(index_fields_undo);
+          (*index_it_undo)->GetIndex()->RemoveEntry(index_row_undo,row.GetRowId(),nullptr);
+        }
+        tableheap->MarkDelete(row.GetRowId(),nullptr);
+        return Inserted;
+
+
+
+      }
+      else{
+
+      }
+
+    }
+
+
+  }
 
   return DB_SUCCESS;
 }
@@ -576,7 +671,46 @@ dberr_t ExecuteEngine::ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context)
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteExecfile" << std::endl;
 #endif
-  return DB_FAILED;
+  string file_name = ast->child_->val_;
+  string file_path = "testfile/"+ file_name;
+  ifstream file_;
+  file_.open(file_path.data());
+  if(file_.is_open()){
+    string sql;
+    while (getline(file_,sql)){
+      // create buffer for sql input
+      YY_BUFFER_STATE bp = yy_scan_string(sql.c_str());
+      if (bp == nullptr) {
+        LOG(ERROR) << "Failed to create yy buffer state." << std::endl;
+        exit(1);
+      }
+      yy_switch_to_buffer(bp);
+
+      // init parser module
+      MinisqlParserInit();
+
+      // parse
+      yyparse();
+
+      ExecuteContext context_;
+      Execute(MinisqlGetParserRootNode(), &context_);
+//      sleep(1);
+
+      // clean memory after parse
+      MinisqlParserFinish();
+      yy_delete_buffer(bp);
+      yylex_destroy();
+
+    }
+    return DB_SUCCESS;
+  }
+  else{
+    printf("failed to open file\n");
+    return DB_FAILED;
+  }
+
+
+
 }
 
 dberr_t ExecuteEngine::ExecuteQuit(pSyntaxNode ast, ExecuteContext *context) {
