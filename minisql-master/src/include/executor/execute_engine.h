@@ -76,9 +76,9 @@ private:
   dberr_t ExecuteTrxCommit(pSyntaxNode ast, ExecuteContext *context);
 
   dberr_t ExecuteTrxRollback(pSyntaxNode ast, ExecuteContext *context);
-
+  //done
   dberr_t ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context);
-
+  //done
   dberr_t ExecuteQuit(pSyntaxNode ast, ExecuteContext *context);
 
   vector<string> GetFiles(const char *src_dir, const char *ext);

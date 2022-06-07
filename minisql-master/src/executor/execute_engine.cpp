@@ -28,13 +28,13 @@ ExecuteEngine::ExecuteEngine() {
 //      cout << "create"<< endl;
     }
 
-    if(access(temp_file.c_str(),0) == 0){
-      //      cout << "exist "<< endl;
-    }
-    else{
-      mkdir(temp_file.c_str(),S_IRWXG);
-      //      cout << "create"<< endl;
-    }
+//    if(access(temp_file.c_str(),0) == 0){
+//      //      cout << "exist "<< endl;
+//    }
+//    else{
+//      mkdir(temp_file.c_str(),S_IRWXG);
+//      //      cout << "create"<< endl;
+//    }
 
     //welcome to minisql!
 
@@ -353,7 +353,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
     bool  unique = false;
     if(column_attribute_now->val_ != nullptr){
       string is_unique = column_attribute_now->val_;
-      printf("ok\n");
+//      printf("ok\n");
       if(is_unique == "unique" ){
         unique = true;
       }
@@ -366,8 +366,20 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       now_column = new Column(column_name,kTypeInt, index, true, unique);
     }
     else if(column_type=="char"){
+      // char length must be positive integer
 
-      uint32_t length = atoi(column_attribute_now->child_->next_->child_->val_);
+      string strlength = (column_attribute_now->child_->next_->child_->val_);
+      int find = strlength.find('.');
+      if (find == -1){
+        printf("String Length must be integer!\n");
+        return DB_FAILED;
+      }
+
+      int length = atoi(column_attribute_now->child_->next_->child_->val_);
+      if(length <0){
+        printf("String Length must be positive!\n");
+        return DB_FAILED;
+      }
       now_column = new Column(column_name,kTypeChar,length, index, true, unique);
     }
     else if(column_type=="float"){
@@ -403,13 +415,26 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
     }
     CatalogManager* current_catalog = current_db_engine->catalog_mgr_;
     IndexInfo* index_info=nullptr;
-
+  // pk
     current_catalog->CreateIndex(table_name,table_name+"_PK",PK,nullptr,index_info);
 
-  }
+    }
+    //unique
+    vector<Column*>::iterator column_it ;
+    for(column_it  = column_.begin() ; column_it < column_.end(); column_it ++){
+      if((*column_it)->IsUnique()){
+        //create index
+        CatalogManager* current_catalog = current_db_engine->catalog_mgr_;
+        IndexInfo* index_info=nullptr;
+        vector <string>unique_index_name = {(*column_it)->GetName()};
+        current_catalog->CreateIndex(table_name,table_name+"_"+(*column_it)->GetName()+"_unique",unique_index_name,nullptr,index_info);
 
-  return DB_TABLE_NOT_EXIST;
-//  return DB_SUCCESS;
+      }
+
+
+  }
+//  return DB_TABLE_NOT_EXIST;
+  return DB_SUCCESS;
 }
 
 dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context) {
@@ -441,6 +466,33 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
     printf("No database used.\n");
     return DB_FAILED;
   }
+  printf("|----------------------|\n");
+  printf("|  show indexes        |\n");
+  printf("|----------------------|\n");
+  vector<TableInfo* > tables;
+  current_db_engine->catalog_mgr_->GetTables(tables);
+  vector<TableInfo* >::iterator  tables_it;
+  for(tables_it=tables.begin();tables_it<tables.end();tables_it++){
+    printf("index of Table: %s\n", (*tables_it)->GetTableName().c_str());
+    // got index
+    vector<IndexInfo*> index_now;
+    current_db_engine->catalog_mgr_->GetTableIndexes((*tables_it)->GetTableName(),index_now);
+    vector<IndexInfo*>::iterator index_now_it;
+    for(index_now_it=index_now.begin();index_now_it<index_now.end();index_now_it++){
+      string index_name = (*index_now_it)->GetIndexName();
+      for(int i=5;i>=0; i--){
+        printf(" ");
+      }
+
+      printf("%s\n",index_name.c_str());
+
+      for(int i=15-index_name.length();i>=0; i--){
+        printf(" ");
+      }
+    }
+    printf("|----------------------|\n");
+  }
+  return DB_SUCCESS;
 
   return DB_FAILED;
 }
@@ -467,7 +519,32 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
     printf("No database used.\n");
     return DB_FAILED;
   }
+  string index_name_drop=ast->child_->val_;
+  vector<TableInfo* > tables;
+  current_db_engine->catalog_mgr_->GetTables(tables);
+  vector<TableInfo* >::iterator  tables_it;
+  for(tables_it=tables.begin();tables_it<tables.end();tables_it++){
+    vector<IndexInfo*> index_now;
+    current_db_engine->catalog_mgr_->GetTableIndexes((*tables_it)->GetTableName(),index_now);
+    vector<IndexInfo*>::iterator index_now_it;
+    for(index_now_it=index_now.begin();index_now_it<index_now.end();index_now_it++){
+      string index_name = (*index_now_it)->GetIndexName();
+      if(index_name_drop == index_name){
+        dberr_t Dropped=current_db_engine->catalog_mgr_->DropIndex((*tables_it)->GetTableName(),index_name_drop);
 
+        if(Dropped==DB_INDEX_NOT_FOUND){
+          printf("Index Not Found\n");
+        }
+        return DB_SUCCESS;
+      }
+
+    }
+
+
+  }
+
+
+  printf("Index drop failed\n");
   return DB_FAILED;
 }
 
@@ -629,6 +706,20 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
     printf("No database used.\n");
     return DB_FAILED;
   }
+
+  string table_name=ast->child_->val_;
+  TableInfo *table_info = nullptr;
+  dberr_t GetTable = current_db_engine->catalog_mgr_->GetTable(table_name, table_info);
+  if (GetTable==DB_TABLE_NOT_EXIST){
+    printf("Table Not Exist!");
+    return DB_FAILED;
+  }
+
+//  TableHeap* table_heap=table_info->GetTableHeap();
+//  SyntaxNode* delete_node = ast->child_;
+//  vector<Row*> delete_row;
+
+
 
   return DB_FAILED;
 }
