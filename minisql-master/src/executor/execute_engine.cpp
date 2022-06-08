@@ -506,72 +506,8 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
     printf("No database used.\n");
     return DB_FAILED;
   }
-  pSyntaxNode table_name_node = ast->child_->next_;
-  string table_name = table_name_node->val_;
-  CatalogManager* current_catalog=current_db_engine->catalog_mgr_;
-  TableInfo *table_info = nullptr;
-  current_catalog->GetTable(table_name, table_info);
-  pSyntaxNode key_name_node= table_name_node->next_->child_;
-  while (key_name_node!= nullptr){
 
-
-    uint32_t key_index;
-    dberr_t Getindex = table_info->GetSchema()->GetColumnIndex(key_name_node->val_,key_index);
-    if (Getindex ==DB_COLUMN_NAME_NOT_EXIST){
-      printf("Attribute isn't in The Table!\n");
-      return DB_FAILED;
-    }
-    const Column* key=table_info->GetSchema()->GetColumn(key_index);
-    if(key->IsUnique()==false){
-      printf("Can't Create Index On Non-unique Key!\n");
-      return DB_FAILED;
-    }
-
-    key_name_node=key_name_node->next_;
-  }
-
-  vector<string> index_keys;
-  vector<string>::iterator index_keys_it;
-  pSyntaxNode index_key_node= ast->child_->next_->next_->child_;
-  while (index_key_node!= nullptr){
-
-    index_keys.push_back(key_name_node->val_);
-    index_key_node = index_key_node->next_;
-  }
-  IndexInfo* index_info=nullptr;
-  string index_name = ast->child_->val_;
-  dberr_t Created=current_catalog->CreateIndex(table_name,index_name,index_keys,nullptr,index_info);
-  if(Created==DB_TABLE_NOT_EXIST){
-    printf("table not exist!\n");
-  }
-  if(Created==DB_INDEX_ALREADY_EXIST){
-
-    printf("index already exist!\n");
-  }
-
-  TableHeap* table_heap = table_info->GetTableHeap();
-  vector<uint32_t>index_column_number;
-  for (index_keys_it = index_keys.begin(); index_keys_it < index_keys.end() ; index_keys_it++ ){
-    uint32_t index ;
-    table_info->GetSchema()->GetColumnIndex(*index_keys_it,index);
-    index_column_number.push_back(index);
-  }
-  vector<Field>fields;
-//  TableIterator table_heap_it;
-  for (auto table_heap_it =table_heap->Begin(nullptr) ; table_heap_it!= table_heap->End(); table_heap_it++) {
-    const Row &it =  *table_heap_it;
-//    Row &it_row = const_cast< Row >(it);
-    vector<Field> index_fields;
-    for (auto index_column_number_it=index_column_number.begin();index_column_number_it<index_column_number.end();index_column_number_it++){
-      index_fields.push_back(*(it.GetField(*index_column_number_it)));
-    }
-    Row index_row(index_fields);
-    index_info->GetIndex()->InsertEntry(index_row,it.GetRowId(),nullptr);
-  }
-
-
-  return Created;
-      return DB_FAILED;
+  return DB_FAILED;
 }
 
 dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context) {
@@ -612,17 +548,506 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
   return DB_FAILED;
 }
 
+vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, CatalogManager* c){
+  if(sn == nullptr) return r;
+  if(sn->type_ == kNodeConnector){
+    
+    vector<Row*> ans;
+    if(strcmp(sn->val_,"and") == 0){
+      auto r1 = SelectTuple(sn->child_,r,t,c);
+      ans = SelectTuple(sn->child_->next_,r1,t,c);
+      return ans;
+    }
+    else if(strcmp(sn->val_,"or") == 0){
+      auto r1 = SelectTuple(sn->child_,r,t,c);
+      auto r2 = SelectTuple(sn->child_->next_,r,t,c);
+      for(uint32_t i=0;i<r1.size();i++){
+        ans.push_back(r1[i]);        
+      }
+      for(uint32_t i=0;i<r2.size();i++){
+        int flag=1;//
+        for(uint32_t j=0;j<r1.size();j++){
+          int f=1;
+          for(uint32_t k=0;k<r1[i]->GetFieldCount();k++){
+            if(!r1[i]->GetField(k)->CompareEquals(*r2[j]->GetField(k))){
+              f=0;break;
+            }
+          }
+          if(f==1){
+            flag=0;//
+            break;}
+        }
+        if(flag==1) ans.push_back(r2[i]);        
+      } 
+      return ans;
+    }
+  }
+  if(sn->type_ == kNodeCompareOperator){
+    string op = sn->val_;//operation type
+    string col_name = sn->child_->val_;//column name
+    string val = sn->child_->next_->val_;//compare value
+    uint32_t keymap;
+    vector<Row*> ans;
+    if(t->GetSchema()->GetColumnIndex(col_name, keymap)!=DB_SUCCESS){
+      cout<<"column not found"<<endl;
+      return ans;
+    }
+    const Column* key_col = t->GetSchema()->GetColumn(keymap);
+    TypeId type =  key_col->GetType();
+
+    if(op == "="){
+      if(type==kTypeInt)
+      {  
+        int valint = std::stoi(val);
+        Field benchmk(type,int(valint));
+        vector<Field> vect_benchmk;
+        vect_benchmk.push_back(benchmk);
+
+        vector <IndexInfo*> indexes;
+        c->GetTableIndexes(t->GetTableName(),indexes);
+        for(auto p=indexes.begin();p<indexes.end();p++){
+            if((*p)->GetIndexKeySchema()->GetColumnCount()==1){
+              if((*p)->GetIndexKeySchema()->GetColumns()[0]->GetName()==col_name){
+                cout<<"--select using index--"<<endl;
+                Row tmp_row(vect_benchmk);
+                vector<RowId> result;
+                (*p)->GetIndex()->ScanKey(tmp_row,result,nullptr);
+                for(auto q:result){
+                  if(q.GetPageId()<0) continue;
+                  Row *tr = new Row(q);
+                  t->GetTableHeap()->GetTuple(tr,nullptr);
+                  ans.push_back(tr);
+                }
+                return ans;
+              }
+            }
+        }   
+
+        
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareEquals(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeFloat)
+      {  
+        float valfloat = std::stof(val);
+        Field benchmk(type,float(valfloat));
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareEquals(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeChar){
+        char* ch = new char[key_col->GetLength()+2];
+        strcpy(ch,val.c_str());//input compare object
+        // cout<<"ch "<<sizeof(ch)<<endl;
+
+        Field benchmk(kTypeChar,ch,key_col->GetLength(),true);
+        vector<Field> vect_benchmk;
+        vect_benchmk.push_back(benchmk);
+
+        vector <IndexInfo*> indexes;
+        c->GetTableIndexes(t->GetTableName(),indexes);
+        for(auto p=indexes.begin();p<indexes.end();p++){
+            if((*p)->GetIndexKeySchema()->GetColumnCount()==1){
+              if((*p)->GetIndexKeySchema()->GetColumns()[0]->GetName()==col_name){
+                
+                for(uint32_t i=0;i<r.size();i++){
+                  const char* test = r[i]->GetField(keymap)->GetData();
+                  // cout<<"tuple len "<<sizeof(test)<<" "<<test<<endl;
+                  int eq=1;
+                  for(uint32_t q = 0;q<sizeof(test)+2;q++){
+                    if(test[q]!=ch[q]) eq=0;
+                  }
+                  // string ts = test;
+                  if(eq==1){
+                    vector<Field> f;
+                    for(auto it:r[i]->GetFields()){
+                      f.push_back(*it);
+                    }
+                    Row* tr = new Row(*r[i]);
+                    ans.push_back(tr);
+                    break;
+                  }
+                }
+
+                // cout<<"--select using index--"<<endl;
+                // Row tmp_row(vect_benchmk);
+                // vector<RowId> result;
+                // (*p)->GetIndex()->ScanKey(tmp_row,result,nullptr);
+                // cout<<"find num "<<result.size()<<endl;
+                // for(auto q:result){
+                //   if(q.GetPageId()<0) continue;
+                //   cout<<"index found"<<endl;
+                //   Row *tr = new Row(q);
+                //   t->GetTableHeap()->GetTuple(tr,nullptr);
+                //   ans.push_back(tr);
+                // }
+                return ans;
+              }
+            }
+        } 
+
+        for(uint32_t i=0;i<r.size();i++){
+          const char* test = r[i]->GetField(keymap)->GetData();
+          // cout<<"tuple len "<<sizeof(test)<<" "<<test<<endl;
+          int eq=1;
+          for(uint32_t q = 0;q<sizeof(test)+2;q++){
+            if(test[q]!=ch[q]) eq=0;
+          }
+          // string ts = test;
+          if(eq==1){
+            vector<Field> f;
+            for(auto it:r[i]->GetFields()){
+              f.push_back(*it);
+            }
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+    }
+    else if(op == "<"){
+      if(type==kTypeInt)
+      {  
+        int valint = std::stoi(val);
+        Field benchmk(type,int(valint));
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareLessThan(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeFloat)
+      {  
+        float valfloat = std::stof(val);
+        Field benchmk(type,float(valfloat));
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareLessThan(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeChar){
+        char* ch = new char[key_col->GetLength()+2];
+        strcpy(ch,val.c_str());
+        for(uint32_t i=0;i<r.size();i++){
+          const char* test = r[i]->GetField(keymap)->GetData();
+          if(strcmp(test,ch)<0){
+            vector<Field> f;
+            for(auto it:r[i]->GetFields()){
+              f.push_back(*it);
+            }
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+    }
+    else if(op == ">"){
+      if(type==kTypeInt)
+      {  
+        int valint = std::stoi(val);
+        Field benchmk(type,int(valint));
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareGreaterThan(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeFloat)
+      {  
+        float valfloat = std::stof(val);
+        Field benchmk(type,float(valfloat));
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareGreaterThan(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeChar){
+        char* ch = new char[key_col->GetLength()];
+        strcpy(ch,val.c_str());//
+
+        for(uint32_t i=0;i<r.size();i++){
+          const char* test = r[i]->GetField(keymap)->GetData();
+          
+          if(strcmp(test,ch)>0){
+            vector<Field> f;
+            for(auto it:r[i]->GetFields()){
+              f.push_back(*it);
+            }
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+    }
+    else if(op == "<="){
+      if(type==kTypeInt)
+      {  
+        int valint = std::stoi(val);
+        Field benchmk(type,int(valint));
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareLessThanEquals(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeFloat)
+      {  
+        float valfloat = std::stof(val);
+        Field benchmk(type,float(valfloat));
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareLessThanEquals(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeChar){
+        char* ch = new char[key_col->GetLength()];
+        strcpy(ch,val.c_str());//
+
+        for(uint32_t i=0;i<r.size();i++){
+          const char* test = r[i]->GetField(keymap)->GetData();
+          
+          if(strcmp(test,ch)<=0){
+            vector<Field> f;
+            for(auto it:r[i]->GetFields()){
+              f.push_back(*it);
+            }
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+    }
+    else if(op == ">="){
+      if(type==kTypeInt)
+      {  
+        int valint = std::stoi(val);
+        Field benchmk(type,int(valint));
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareGreaterThanEquals(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeFloat)
+      {  
+        float valfloat = std::stof(val);
+        Field benchmk(type,float(valfloat));
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareGreaterThanEquals(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeChar){
+        char* ch = new char[key_col->GetLength()];
+        strcpy(ch,val.c_str());//
+
+        for(uint32_t i=0;i<r.size();i++){
+          const char* test = r[i]->GetField(keymap)->GetData();
+        
+          if(strcmp(test,ch)>=0){
+            vector<Field> f;
+            for(auto it:r[i]->GetFields()){
+              f.push_back(*it);
+            }
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+    }
+    else if(op == "<>"){
+      if(type==kTypeInt)
+      {  
+        int valint = std::stoi(val);
+        Field benchmk(type,int(valint));
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareNotEquals(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeFloat)
+      {  
+        float valfloat = std::stof(val);
+        Field benchmk(type,float(valfloat));
+        for(uint32_t i=0;i<r.size();i++){
+          if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
+            cout<<"not comparable"<<endl;
+            return ans;
+          }
+          if(r[i]->GetField(keymap)->CompareNotEquals(benchmk)){
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+      else if(type==kTypeChar){
+        char* ch = new char[key_col->GetLength()];
+        strcpy(ch,val.c_str());//
+
+        for(uint32_t i=0;i<r.size();i++){
+          const char* test = r[i]->GetField(keymap)->GetData();
+          
+          if(strcmp(test,ch)!=0){
+            vector<Field> f;
+            for(auto it:r[i]->GetFields()){
+              f.push_back(*it);
+            }
+            Row* tr = new Row(*r[i]);
+            ans.push_back(tr);
+          }
+        }
+      }
+    }
+    return ans;
+  }
+  return r; 
+}
+
+
 dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteSelect" << std::endl;
 #endif
-
-  if(current_db_engine == NULL) {
-    printf("No database used.\n");
+  pSyntaxNode range = ast->child_;
+  vector<uint32_t> columns;
+  string table_name=range->next_->val_;
+  TableInfo *tableinfo = nullptr;
+  dberr_t GetRet = current_db_engine->catalog_mgr_->GetTable(table_name, tableinfo);
+  if (GetRet==DB_TABLE_NOT_EXIST){
+    cout<<"Table Not Exist!"<<endl;
     return DB_FAILED;
   }
-
-  return DB_FAILED;
+  if(range->type_ == kNodeAllColumns){
+    // cout<<"select all"<<endl;
+    for(uint32_t i=0;i<tableinfo->GetSchema()->GetColumnCount();i++)
+      columns.push_back(i);
+  }
+  else if(range->type_ == kNodeColumnList){
+    // vector<Column*> all_columns = tableinfo->GetSchema()->GetColumns();
+    pSyntaxNode col = range->child_;
+    while(col!=nullptr){
+      uint32_t pos;
+      if(tableinfo->GetSchema()->GetColumnIndex(col->val_,pos)==DB_SUCCESS){
+        columns.push_back(pos);
+      }
+      else{
+        cout<<"column not found"<<endl;
+        return DB_FAILED;
+      }
+      col = col->next_;
+    }
+  }
+  cout<<"--------------------"<<endl;
+  cout<<endl;
+  for(auto i:columns){
+    cout<<tableinfo->GetSchema()->GetColumn(i)->GetName()<<"   ";
+  }
+  cout<<endl;
+  cout<<"--------------------"<<endl;
+  if(range->next_->next_==nullptr)//
+  {
+    int cnt=0;
+    for(auto it=tableinfo->GetTableHeap()->Begin(nullptr);it!=tableinfo->GetTableHeap()->End();it++){
+      for(uint32_t j=0;j<columns.size();j++){
+        if(it->GetField(columns[j])->IsNull()){
+          cout<<"null";
+        }
+        else
+          it->GetField(columns[j])->fprint();
+        cout<<"  ";
+        
+      }
+      cout<<endl;
+      cnt++;
+    }
+    cout<<"Select Success, Affects "<<cnt<<" Record!"<<endl;
+    return DB_SUCCESS;
+  }
+  else if(range->next_->next_->type_ == kNodeConditions){
+    pSyntaxNode cond = range->next_->next_->child_;
+    vector<Row*> origin_rows;
+    for(auto it=tableinfo->GetTableHeap()->Begin(nullptr);it!=tableinfo->GetTableHeap()->End();it++){
+      Row* tp = new Row(*it);
+      origin_rows.push_back(tp);
+    }    
+    auto ptr_rows  = SelectTuple(cond, *&origin_rows,tableinfo,current_db_engine->catalog_mgr_);
+    
+    for(auto it=ptr_rows.begin();it!=ptr_rows.end();it++){
+      for(uint32_t j=0;j<columns.size();j++){
+        (*it)->GetField(columns[j])->fprint();
+        cout<<"  ";
+      }
+      cout<<endl;
+    }
+    cout<<"Select Success, Affects "<<ptr_rows.size()<<" Record!"<<endl;
+  }
+  
+  return DB_SUCCESS;
 }
 
 dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
@@ -806,6 +1231,7 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
     table_heap->ApplyDelete(it->GetRowId(),nullptr);
   }
 
+  return DB_FAILED;
   printf("delete success , %zu records delete!\n", delete_row.size());
 
   /// index 维护
@@ -836,13 +1262,69 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
 #ifdef ENABLE_EXECUTE_DEBUG
   LOG(INFO) << "ExecuteUpdate" << std::endl;
 #endif
-
-  if(current_db_engine == NULL) {
-    printf("No database used.\n");
-    return DB_FAILED;
+  string table_name(ast->child_->val_);
+  TableInfo *tableinfo = nullptr;
+  dberr_t resGot;
+  resGot = current_db_engine->catalog_mgr_->GetTable(table_name, tableinfo);
+  if (resGot == DB_TABLE_NOT_EXIST){
+    cout<<"Table Not Exist!"<<endl;
+    return resGot;
   }
 
-  return DB_FAILED;
+  // Schema* schema = tableinfo->GetSchema();
+  TableHeap* tableheap = tableinfo->GetTableHeap();//
+  
+  SyntaxNode* updates = ast->child_->next_;
+  vector<Row*> Got;
+
+  if(updates->next_==nullptr){
+    for(auto it=tableinfo->GetTableHeap()->Begin(nullptr);it!=tableinfo->GetTableHeap()->End();it++){
+      Got.push_back(new Row(*it));
+    }   
+  }
+  else{
+    vector<Row*> origin_rows;
+    for(auto it=tableinfo->GetTableHeap()->Begin(nullptr);it!=tableinfo->GetTableHeap()->End();it++){
+      Row* tp = new Row(*it);
+      origin_rows.push_back(tp);
+    }
+    Got  = SelectTuple(updates->next_->child_, *&origin_rows,tableinfo,current_db_engine->catalog_mgr_);
+  }
+  updates = updates->child_;
+  while(updates && updates->type_ == kNodeUpdateValue){
+    string col = updates->child_->val_;
+    string upval = updates->child_->next_->val_;
+    uint32_t index;//
+    tableinfo->GetSchema()->GetColumnIndex(col,index);
+    TypeId tid = tableinfo->GetSchema()->GetColumn(index)->GetType();
+    if(tid == kTypeInt){
+      Field* newval = new Field(kTypeInt,stoi(upval));
+      for(auto it:Got){
+        it->GetFields()[index] = newval;
+      }
+    }
+    else if(tid == kTypeFloat){
+      Field* newval = new Field(kTypeFloat,stof(upval));
+      for(auto it:Got){
+        it->GetFields()[index] = newval;
+      }
+    }
+    else if(tid == kTypeChar){
+      uint32_t len = tableinfo->GetSchema()->GetColumn(index)->GetLength();
+      char* tc = new char[len];
+      strcpy(tc,upval.c_str());
+      Field* newval = new Field(kTypeChar,tc,len,true);
+      for(auto it:Got){
+        it->GetFields()[index] = newval;
+      }
+    }
+    updates = updates->next_;
+  }
+  for(auto it:Got){
+    tableheap->UpdateTuple(*it,it->GetRowId(),nullptr);
+  }
+  cout<<"Update Success, Affects "<<Got.size()<<" Record!"<<endl;
+  return DB_SUCCESS;
 }
 
 dberr_t ExecuteEngine::ExecuteTrxBegin(pSyntaxNode ast, ExecuteContext *context) {
@@ -920,3 +1402,4 @@ dberr_t ExecuteEngine::ExecuteQuit(pSyntaxNode ast, ExecuteContext *context) {
   context->flag_quit_ = true;
   return DB_SUCCESS;
 }
+
