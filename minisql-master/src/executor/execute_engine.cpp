@@ -779,13 +779,57 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
     return DB_FAILED;
   }
 
-//  TableHeap* table_heap=table_info->GetTableHeap();
-//  SyntaxNode* delete_node = ast->child_;
-//  vector<Row*> delete_row;
+  TableHeap* table_heap=table_info->GetTableHeap();
+  SyntaxNode* delete_node = ast->child_;
+  vector<Row*> delete_row;
 
+  if(delete_node == nullptr){
+    for(TableIterator it = table_info->GetTableHeap()->Begin(nullptr);it != table_info->GetTableHeap()->End();it++){
+      Row* temp = new Row(*it);
+      delete_row.push_back(temp);
+    }
 
+  }
+  else{
+    vector<Row*> origin_rows;
+    for(TableIterator it = table_info->GetTableHeap()->Begin(nullptr);it != table_info->GetTableHeap()->End();it++){
+      Row* tp = new Row(*it);
+      origin_rows.push_back(tp);
+    }
+    ///--------------------------------------------------------------------------------------------------------
+//    delete_row  = rec_sel(delete_node->next_->child_, *&origin_rows,table_info,current_db_engine->catalog_mgr_);
+   ///---------------------------------------------------------------------------------------------------------
 
-  return DB_FAILED;
+  }
+
+  for(auto it:delete_row){
+    table_heap->ApplyDelete(it->GetRowId(),nullptr);
+  }
+
+  printf("delete success , %zu records delete!\n", delete_row.size());
+
+  /// index 维护
+  vector <IndexInfo*> index_now;
+  current_db_engine->catalog_mgr_->GetTableIndexes(table_name,index_now);
+
+  vector <IndexInfo*>::iterator  index_now_it;
+  for(index_now_it=index_now.begin();index_now_it!=index_now.end();index_now_it++){
+    for(auto row_now:delete_row){
+      vector<Field> index_fields;
+
+      for(auto it:(*index_now_it)->GetIndexKeySchema()->GetColumns()){
+        index_id_t index_id;
+        if(table_info->GetSchema()->GetColumnIndex(it->GetName(),index_id)==DB_SUCCESS){
+          Field * field_now = row_now->GetField(index_id);
+          index_fields.push_back(*field_now);
+        }
+      }
+      Row index_row(index_fields);
+      (*index_now_it)->GetIndex()->RemoveEntry(index_row,row_now->GetRowId(),nullptr);
+    }
+  }
+
+  return DB_SUCCESS;
 }
 
 dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
