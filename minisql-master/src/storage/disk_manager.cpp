@@ -101,7 +101,7 @@ void DiskManager::DeAllocatePage(page_id_t logical_page_id) {
   meta->num_allocated_pages_ --;
   meta->extent_used_page_[x] --;
   WritePhysicalPage(1+x*BITMAP_SIZE, page_data);
-  WritePhysicalPage(0, reinterpret_cast<char*>(meta) );
+//  WritePhysicalPage(0, reinterpret_cast<char*>(meta) );
 
   delete[] page_data;
 }

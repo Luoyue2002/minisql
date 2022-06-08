@@ -508,8 +508,72 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
     printf("No database used.\n");
     return DB_FAILED;
   }
+  pSyntaxNode table_name_node = ast->child_->next_;
+  string table_name = table_name_node->val_;
+  CatalogManager* current_catalog=current_db_engine->catalog_mgr_;
+  TableInfo *table_info = nullptr;
+  current_catalog->GetTable(table_name, table_info);
+  pSyntaxNode key_name_node= table_name_node->next_->child_;
+  while (key_name_node!= nullptr){
 
-  return DB_FAILED;
+
+    uint32_t key_index;
+    dberr_t Getindex = table_info->GetSchema()->GetColumnIndex(key_name_node->val_,key_index);
+    if (Getindex ==DB_COLUMN_NAME_NOT_EXIST){
+      printf("Attribute isn't in The Table!\n");
+      return DB_FAILED;
+    }
+    const Column* key=table_info->GetSchema()->GetColumn(key_index);
+    if(key->IsUnique()==false){
+      printf("Can't Create Index On Non-unique Key!\n");
+      return DB_FAILED;
+    }
+
+    key_name_node=key_name_node->next_;
+  }
+
+  vector<string> index_keys;
+  vector<string>::iterator index_keys_it;
+  pSyntaxNode index_key_node= ast->child_->next_->next_->child_;
+  while (index_key_node!= nullptr){
+
+    index_keys.push_back(key_name_node->val_);
+    index_key_node = index_key_node->next_;
+  }
+  IndexInfo* index_info=nullptr;
+  string index_name = ast->child_->val_;
+  dberr_t Created=current_catalog->CreateIndex(table_name,index_name,index_keys,nullptr,index_info);
+  if(Created==DB_TABLE_NOT_EXIST){
+    printf("table not exist!\n");
+  }
+  if(Created==DB_INDEX_ALREADY_EXIST){
+
+    printf("index already exist!\n");
+  }
+
+  TableHeap* table_heap = table_info->GetTableHeap();
+  vector<uint32_t>index_column_number;
+  for (index_keys_it = index_keys.begin(); index_keys_it < index_keys.end() ; index_keys_it++ ){
+    uint32_t index ;
+    table_info->GetSchema()->GetColumnIndex(*index_keys_it,index);
+    index_column_number.push_back(index);
+  }
+  vector<Field>fields;
+//  TableIterator table_heap_it;
+  for (auto table_heap_it =table_heap->Begin(nullptr) ; table_heap_it!= table_heap->End(); table_heap_it++) {
+    const Row &it =  *table_heap_it;
+//    Row &it_row = const_cast< Row >(it);
+    vector<Field> index_fields;
+    for (auto index_column_number_it=index_column_number.begin();index_column_number_it<index_column_number.end();index_column_number_it++){
+      index_fields.push_back(*(it.GetField(*index_column_number_it)));
+    }
+    Row index_row(index_fields);
+    index_info->GetIndex()->InsertEntry(index_row,it.GetRowId(),nullptr);
+  }
+
+
+  return Created;
+      return DB_FAILED;
 }
 
 dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context) {
@@ -1192,13 +1256,57 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
     return DB_FAILED;
   }
 
-//  TableHeap* table_heap=table_info->GetTableHeap();
-//  SyntaxNode* delete_node = ast->child_;
-//  vector<Row*> delete_row;
+  TableHeap* table_heap=table_info->GetTableHeap();
+  SyntaxNode* delete_node = ast->child_;
+  vector<Row*> delete_row;
 
+  if(delete_node == nullptr){
+    for(TableIterator it = table_info->GetTableHeap()->Begin(nullptr);it != table_info->GetTableHeap()->End();it++){
+      Row* temp = new Row(*it);
+      delete_row.push_back(temp);
+    }
 
+  }
+  else{
+    vector<Row*> origin_rows;
+    for(TableIterator it = table_info->GetTableHeap()->Begin(nullptr);it != table_info->GetTableHeap()->End();it++){
+      Row* tp = new Row(*it);
+      origin_rows.push_back(tp);
+    }
+    ///--------------------------------------------------------------------------------------------------------
+//    delete_row  = rec_sel(delete_node->next_->child_, *&origin_rows,table_info,current_db_engine->catalog_mgr_);
+   ///---------------------------------------------------------------------------------------------------------
 
-  return DB_FAILED;
+  }
+
+  for(auto it:delete_row){
+    table_heap->ApplyDelete(it->GetRowId(),nullptr);
+  }
+
+  printf("delete success , %zu records delete!\n", delete_row.size());
+
+  /// index 维护
+  vector <IndexInfo*> index_now;
+  current_db_engine->catalog_mgr_->GetTableIndexes(table_name,index_now);
+
+  vector <IndexInfo*>::iterator  index_now_it;
+  for(index_now_it=index_now.begin();index_now_it!=index_now.end();index_now_it++){
+    for(auto row_now:delete_row){
+      vector<Field> index_fields;
+
+      for(auto it:(*index_now_it)->GetIndexKeySchema()->GetColumns()){
+        index_id_t index_id;
+        if(table_info->GetSchema()->GetColumnIndex(it->GetName(),index_id)==DB_SUCCESS){
+          Field * field_now = row_now->GetField(index_id);
+          index_fields.push_back(*field_now);
+        }
+      }
+      Row index_row(index_fields);
+      (*index_now_it)->GetIndex()->RemoveEntry(index_row,row_now->GetRowId(),nullptr);
+    }
+  }
+
+  return DB_SUCCESS;
 }
 
 dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {

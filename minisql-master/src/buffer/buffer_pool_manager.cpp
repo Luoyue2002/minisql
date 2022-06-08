@@ -48,6 +48,9 @@ Page *BufferPoolManager::FetchPage(page_id_t page_id) {
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
     std::scoped_lock lock{latch_};
 //    assert(page_id != INVALID_PAGE_ID);
+    if(page_id == -1){
+      return nullptr;
+    }
   if (page_table_.find(page_id) != page_table_.end()){ //在page table 里
       Page *page_now_ = &pages_[page_table_.find(page_id)->second];
       page_now_->pin_count_ = page_now_->pin_count_ + 1;
