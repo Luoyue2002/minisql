@@ -133,15 +133,22 @@ bool TableHeap::GetTuple(Row *row, Transaction *txn) {
 }
 
 TableIterator TableHeap::Begin(Transaction *txn) {
-  RowId rowid;
-  TablePage* page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(first_page_id_));
-  page->GetFirstTupleRid(&rowid);
-  // cout << rowid.GetPageId() << " " << rowid.GetSlotNum() << endl;
-  return TableIterator( page, rowid, schema_, buffer_pool_manager_ );
+  RowId FirstId;
+  auto page_id=first_page_id_;
+  while(page_id!=INVALID_PAGE_ID){
+    auto page=static_cast<TablePage *>(buffer_pool_manager_->FetchPage(page_id));
+    auto isFound=page->GetFirstTupleRid(&FirstId);
+    buffer_pool_manager_->UnpinPage(page_id,false);
+    if(isFound){
+      break;
+    }
+    page_id=page->GetNextPageId();
+  }
+  return TableIterator(this,FirstId);
 }
 
 TableIterator TableHeap::End() {
-  TablePage* page, *page2;
+  /*TablePage* page, *page2;
   page_id_t page_id = first_page_id_;
   
   while( page_id != INVALID_PAGE_ID && 
@@ -155,9 +162,10 @@ TableIterator TableHeap::End() {
   // find the tuple
   RowId rowid, rowid2;
   page->GetFirstTupleRid(&rowid);
-  while(page->GetNextTupleRid(rowid, &rowid2)) rowid = rowid2;
-
+  if(rowid.GetPageId() != INVALID_PAGE_ID)
+    while(page->GetNextTupleRid(rowid, &rowid2)) rowid = rowid2;
+*/
   // return the iterator
   // cout << rowid.GetPageId() << " " << rowid.GetSlotNum() << endl;
-  return TableIterator( page, rowid, schema_, buffer_pool_manager_ );
+  return TableIterator(this,RowId(INVALID_ROWID));
 }

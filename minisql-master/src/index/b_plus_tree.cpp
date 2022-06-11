@@ -283,18 +283,32 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     return;
   }
   Page* leaf_page_ = FindLeafPage(key, false);
+  ASSERT(leaf_page_!=nullptr,"leaf_page is null");
   LeafPage *leaf_node = reinterpret_cast<LeafPage *>(leaf_page_->GetData());
-  //delete it
-  leaf_node->RemoveAndDeleteRecord(key,comparator_);
-  //after delete
-  if(leaf_node->GetSize()<leaf_node->GetMinSize()){
-    //adjust
-//    LeafPage *leaf_node_ = reinterpret_cast<LeafPage *>(leaf_page_->GetData());
-    CoalesceOrRedistribute(leaf_node, transaction);
-  }
-  if(leaf_node->GetSize()>=leaf_node->GetMinSize()){
-    //do nothing
-  }
+//   //delete it
+//   leaf_node->RemoveAndDeleteRecord(key,comparator_);
+//   //after delete
+//   if(leaf_node->GetSize()<leaf_node->GetMinSize()){
+//     //adjust
+// //    LeafPage *leaf_node_ = reinterpret_cast<LeafPage *>(leaf_page_->GetData());
+//     CoalesceOrRedistribute(leaf_node, transaction);
+//   }
+//   if(leaf_node->GetSize()>=leaf_node->GetMinSize()){
+//     //do nothing
+//   }
+    int size_before_delete=leaf_node->GetSize();
+    int size_after_delete=leaf_node->RemoveAndDeleteRecord(key,comparator_);
+    if(size_after_delete<size_before_delete){
+
+      buffer_pool_manager_->UnpinPage(leaf_page_->GetPageId(),true);
+      bool ShouldDelete;
+      ShouldDelete=CoalesceOrRedistribute(leaf_node,nullptr);
+      if(ShouldDelete==true){
+        buffer_pool_manager_->DeletePage(leaf_node->GetPageId());
+      }
+    }else{
+      buffer_pool_manager_->UnpinPage(leaf_page_->GetPageId(),false);
+    }
 }
 
 /*

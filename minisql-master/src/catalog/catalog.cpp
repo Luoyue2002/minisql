@@ -317,7 +317,7 @@ dberr_t CatalogManager::DropTable(const string &table_name) {
     return DB_TABLE_NOT_EXIST;
   }
 
-  { // dropindexes
+  if(index_names_.find(table_name) != index_names_.end()){ // dropindexes
   auto gotindexes = index_names_.find(table_name)->second;
   for(auto i = gotindexes.begin();i!=gotindexes.end();i++){
     // drop indexes on the deleted table 

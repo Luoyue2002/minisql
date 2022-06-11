@@ -77,13 +77,15 @@ int main(int argc, char **argv) {
 
     ExecuteContext context;
     engine.Execute(MinisqlGetParserRootNode(), &context);
-    sleep(1); 
-
+    
+    // sleep(1); 
+    usleep(10000);
+    
     // clean memory after parse
     MinisqlParserFinish();
     yy_delete_buffer(bp);
     yylex_destroy();
-
+    
     // quit condition
     if (context.flag_quit_) {
       printf("bye!\n");

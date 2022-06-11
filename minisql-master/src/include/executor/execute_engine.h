@@ -11,6 +11,8 @@ extern "C" {
 #include "parser/parser.h"
 };
 
+
+
 /**
  * ExecuteContext stores all the context necessary to run in the execute engine
  * This struct is implemented by student self for necessary.
@@ -42,33 +44,33 @@ public:
   /// get .db file
 
 private:
-  // done
+  // done, no bug
   dberr_t ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *context);
-  // done, 但为什么删了以后数据库文件还在
+  // done, no bug
   dberr_t ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *context);
-  // done
+  // done, no bug
   dberr_t ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *context);
-  // done
+  // done, no bug
   dberr_t ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *context);
-  // done
+  // done, no bug
   dberr_t ExecuteShowTables(pSyntaxNode ast, ExecuteContext *context);
-  // done
+  // done, no bug
   dberr_t ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *context);
-  // done
+  // done, no bug
   dberr_t ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context);
-
+  // done, no bug
   dberr_t ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *context);
-
+  // done, no bug
   dberr_t ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *context);
-
+  // done, no bug
   dberr_t ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context);
-
+  // done, no bug
   dberr_t ExecuteSelect(pSyntaxNode ast, ExecuteContext *context);
-
+  // done, no bug
   dberr_t ExecuteInsert(pSyntaxNode ast, ExecuteContext *context);
-
+  // done
   dberr_t ExecuteDelete(pSyntaxNode ast, ExecuteContext *context);
-
+  // done, no bug
   dberr_t ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context);
 
   dberr_t ExecuteTrxBegin(pSyntaxNode ast, ExecuteContext *context);
@@ -78,7 +80,7 @@ private:
   dberr_t ExecuteTrxRollback(pSyntaxNode ast, ExecuteContext *context);
   //done
   dberr_t ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context);
-  //done
+  //done, no bug
   dberr_t ExecuteQuit(pSyntaxNode ast, ExecuteContext *context);
 
   vector<string> GetFiles(const char *src_dir, const char *ext);
