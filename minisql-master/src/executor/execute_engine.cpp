@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "glog/logging.h"
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 
 extern "C" {
@@ -38,7 +39,7 @@ ExecuteEngine::ExecuteEngine() {
 
     //welcome to minisql!
 
-    cout << "welcome to our minisql" <<endl;
+    // cout << "welcome to our minisql" <<endl;
     // 进入目录读文件
     vector<string> file_name  = GetFiles(temp.c_str(), ext.c_str());
     // ------------------------test
@@ -49,7 +50,7 @@ ExecuteEngine::ExecuteEngine() {
 
     if(!file_name.empty()) {
       for (file_name_it = file_name.begin(); file_name_it != file_name.end(); file_name_it++) {
-        printf("%s\n",file_name_it->c_str());
+        //printf("%s\n",file_name_it->c_str());
         string db_name = *file_name_it + ".db";
 //        string db_name = *file_name_it ;
         DBStorageEngine *storage_engine_ = new DBStorageEngine(db_name.c_str(), false, DEFAULT_BUFFER_POOL_SIZE);
@@ -130,7 +131,7 @@ vector<string> ExecuteEngine::GetFiles(const char *src_dir, const char *ext)
 
 
 dberr_t ExecuteEngine::Execute(pSyntaxNode ast, ExecuteContext *context) {
-  printf("Execute prepare\n");
+  // printf("Execute prepare\n");
   if (ast == nullptr) {
     return DB_FAILED;
   }
@@ -206,7 +207,8 @@ dberr_t ExecuteEngine::ExecuteCreateDatabase(pSyntaxNode ast, ExecuteContext *co
 
     DBStorageEngine *storage_engine_ = new DBStorageEngine(db_name_db.c_str(), true, DEFAULT_BUFFER_POOL_SIZE);
     dbs_.emplace(db_name, storage_engine_);
-    printf("create success!\n");
+    printf("Create success!\n");
+    cout << "\033[32m[Rows]\033[0m " << "1 row affected. " << endl;
     return  DB_SUCCESS;
   }
 
@@ -226,9 +228,11 @@ dberr_t ExecuteEngine::ExecuteDropDatabase(pSyntaxNode ast, ExecuteContext *cont
 //    if(current_db_ == db_name){
 //      current_db_ == dbs_.begin()->first;
 //    }
+    cout << "Drop success!\n" << endl;
+    cout << "\033[32m[Rows]\033[0m " << "1 row affected. " << endl;
     return  DB_SUCCESS;
   }
-  printf("no such database\n");
+  printf("No such database!\n");
   return  DB_FAILED;
 
 }
@@ -239,13 +243,14 @@ dberr_t ExecuteEngine::ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *con
 #endif
   unordered_map<std::string, DBStorageEngine *>::iterator dbs_it  ;
   if(dbs_.empty()){
-    printf("no database\n");
+    printf("No database.\n");
   }
 
+  int num = 0;
   if(!dbs_.empty()) {
-    printf("|----------------------|\n");
-    printf("|  show databases      |\n");
-    printf("|----------------------|\n");
+    printf("+----------------------+\n");
+    printf("| Database             |\n");
+    printf("+----------------------+\n");
     for (dbs_it  = dbs_.begin(); dbs_it  != dbs_.end(); dbs_it ++) {
       string db_name = dbs_it->first;
       printf("| ");
@@ -254,11 +259,11 @@ dberr_t ExecuteEngine::ExecuteShowDatabases(pSyntaxNode ast, ExecuteContext *con
         printf(" ");
       }
       printf("|\n");
+      num ++;
     }
-    printf("|--------------------- |\n");
+    printf("+----------------------+\n");
   }
-
-
+  cout << "\033[32m[Rows]\033[0m " << num << " rows affected. " << endl;
 
   return DB_SUCCESS;
 }
@@ -276,12 +281,13 @@ dberr_t ExecuteEngine::ExecuteUseDatabase(pSyntaxNode ast, ExecuteContext *conte
       dbs_it = dbs_.find(current_db_);
       current_db_engine =dbs_it->second;
 
+    cout << "Database Changed. " << endl;
 
     return  DB_SUCCESS;
 
   }
   else{
-    printf("no such database\n");
+    printf("No such database.\n");
   }
   return  DB_FAILED;
 
@@ -297,14 +303,19 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
     return DB_FAILED;
   }
 
-  printf("|----------------------|\n");
-  printf("|  show tables         |\n");
+  printf("+----------------------|\n");
+  string dbname = current_db_engine->db_file_name_;
+  dbname = dbname.substr(0, dbname.size()-3);
+  printf("| Tables_%s", dbname.c_str());
+  for(unsigned int i = 0; i < 14-dbname.size(); i++) printf(" ");
+  printf("|\n");
   printf("|----------------------|\n");
   vector<TableInfo* > tables_now;
 //  unordered_map<std::string, DBStorageEngine *>::iterator dbs_it  ;
 //  dbs_it = dbs_.find(current_db_);
 //  DBStorageEngine *  current_db_engine =dbs_it->second;
   dberr_t show = current_db_engine->catalog_mgr_->GetTables(tables_now);
+  int num = 0;
   if(show == DB_TABLE_NOT_EXIST){
     printf("| ");
     for(int i=20;i>=0; i--){
@@ -312,6 +323,7 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
     }
     printf("|\n");
     printf("|----------------------|\n");
+    cout << "\033[32m[Rows]\033[0m " << 0 << " row affected. " << endl;
     return DB_TABLE_NOT_EXIST;
   }
   for(auto table_it=tables_now.begin();table_it<tables_now.end();table_it++){
@@ -322,8 +334,10 @@ dberr_t ExecuteEngine::ExecuteShowTables(pSyntaxNode ast, ExecuteContext *contex
       printf(" ");
     }
     printf("|\n");
+    num ++;
   }
   printf("|----------------------|\n");
+  cout << "\033[32m[Rows]\033[0m " << num << " rows affected. " << endl;
   return DB_SUCCESS;
 //  return DB_FAILED;
 }
@@ -372,13 +386,13 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       string strlength = (column_attribute_now->child_->next_->child_->val_);
       int find = strlength.find('.');
       if (find != -1){
-        printf("String Length must be integer!\n");
+        printf("\033[31m[ERROR]\033[0m String Length must be integer!\n");
         return DB_FAILED;
       }
 
       int length = atoi(column_attribute_now->child_->next_->child_->val_);
       if(length <0){
-        printf("String Length must be positive!\n");
+        printf("\033[31m[ERROR]\033[0m String Length must be positive!\n");
         return DB_FAILED;
       }
       now_column = new Column(column_name,kTypeChar,length, index, true, unique);
@@ -388,7 +402,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
       now_column = new Column(column_name,kTypeFloat,index,true,unique);
     }
     else{
-      printf("no such type!\n");
+      printf("\033[31m[ERROR]\033[0m No such type: %s!\n", column_type.c_str());
       return DB_FAILED;
     }
     column_.push_back(now_column);
@@ -402,7 +416,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
   //cout<<"SUCCEED!"<<endl;
   dberr_t Created = current_db_engine->catalog_mgr_->CreateTable(table_name,schema_now,nullptr,table_info);
   if(Created == DB_TABLE_ALREADY_EXIST){
-    printf("db table already exist\n");
+    printf("\033[31m[ERROR]\033[0m Table already exist!\n");
     return DB_TABLE_ALREADY_EXIST;
   }
   // get pk
@@ -435,6 +449,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 
   }
 //  return DB_TABLE_NOT_EXIST;
+  cout << "\033[32m[Rows]\033[0m " << 1 << " row affected. " << endl;
   return DB_SUCCESS;
 }
 
@@ -454,9 +469,10 @@ dberr_t ExecuteEngine::ExecuteDropTable(pSyntaxNode ast, ExecuteContext *context
 //  DBStorageEngine * current_db_engine ;
   dberr_t Dropped=current_db_engine->catalog_mgr_->DropTable(ast->child_->val_);
   if(Dropped==DB_TABLE_NOT_EXIST){
-    printf("db table not exist!\n");
+    printf("\033[33m[Warning]\033[0m Table not exist!\n");
     return DB_TABLE_NOT_EXIST;
   }
+  cout << "\033[32m[Rows]\033[0m " << 1 << " row affected. " << endl;
   return DB_SUCCESS;
 //  return DB_FAILED;
 }
@@ -470,35 +486,45 @@ dberr_t ExecuteEngine::ExecuteShowIndexes(pSyntaxNode ast, ExecuteContext *conte
     printf("No database used.\n");
     return DB_FAILED;
   }
-  printf("|----------------------|\n");
-  printf("|  show indexes        |\n");
-  printf("|----------------------|\n");
+  printf("+----------------------+\n");
+  string dbname = current_db_engine->db_file_name_;
+  dbname = dbname.substr(0, dbname.size()-3);
+  printf("| Indexes_%s", dbname.c_str());
+  for(unsigned int i = 0; i < 13-dbname.size(); i++) printf(" ");
+  printf("|\n");
+  printf("+----------------------+\n");
+
   vector<TableInfo* > tables;
   current_db_engine->catalog_mgr_->GetTables(tables);
   vector<TableInfo* >::iterator  tables_it;
+  int num = 0;
   for(tables_it=tables.begin();tables_it<tables.end();tables_it++){
-    printf("index of Table: %s\n", (*tables_it)->GetTableName().c_str());
+    string dbname = (*tables_it)->GetTableName();
+    printf("| Table %s:", dbname.c_str());
     // got index
+    for(unsigned int i = 0; i < 14-dbname.size(); i++) printf(" ");
+    printf("|\n");
+
     vector<IndexInfo*> index_now;
     current_db_engine->catalog_mgr_->GetTableIndexes((*tables_it)->GetTableName(),index_now);
     vector<IndexInfo*>::iterator index_now_it;
     for(index_now_it=index_now.begin();index_now_it<index_now.end();index_now_it++){
+      num ++;
       string index_name = (*index_now_it)->GetIndexName();
-      for(int i=5;i>=0; i--){
+      printf("|   ");
+
+      printf("%s",index_name.c_str());
+
+      for(int i=19-index_name.length();i > 0; i--){
         printf(" ");
       }
-
-      printf("%s\n",index_name.c_str());
-
-      for(int i=15-index_name.length();i>=0; i--){
-        printf(" ");
-      }
+      printf("|\n");
     }
-    printf("|----------------------|\n");
+    printf("+----------------------+\n");
   }
+  cout << "\033[32m[Rows]\033[0m " << num << " rows affected. " << endl;
   return DB_SUCCESS;
 
-  return DB_FAILED;
 }
 
 dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *context) {
@@ -523,7 +549,7 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
     uint32_t key_index;
     dberr_t Getindex = table_info->GetSchema()->GetColumnIndex(key_name_node->val_,key_index);
     if (Getindex ==DB_COLUMN_NAME_NOT_EXIST){
-      printf("Attribute isn't in The Table!\n");
+      printf("\033[31m[ERROR]\033[0m No corresponding attribute!\n");
       return DB_FAILED;
     }
     const Column* key=table_info->GetSchema()->GetColumn(key_index);
@@ -534,7 +560,7 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
     key_name_node=key_name_node->next_;
   }
   if(have_unique == false){
-      printf("Can't Create Index On Non-unique Key!\n");
+      printf("\033[31m[ERROR]\033[0m Can't create index on non-unique attribute!\n");
       return DB_FAILED;
   }
 
@@ -550,11 +576,11 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
   string index_name = ast->child_->val_;
   dberr_t Created=current_catalog->CreateIndex(table_name,index_name,index_keys,nullptr,index_info);
   if(Created==DB_TABLE_NOT_EXIST){
-    printf("table not exist!\n");
+    printf("\033[31m[ERROR]\033[0m Table not exist!\n");
   }
   if(Created==DB_INDEX_ALREADY_EXIST){
 
-    printf("index already exist!\n");
+    printf("\033[31m[ERROR]\033[0m Index already exist!\n");
   }
 
   TableHeap* table_heap = table_info->GetTableHeap();
@@ -577,7 +603,8 @@ dberr_t ExecuteEngine::ExecuteCreateIndex(pSyntaxNode ast, ExecuteContext *conte
     index_info->GetIndex()->InsertEntry(index_row,it.GetRowId(),nullptr);
   }
 
-
+  if (Created == DB_SUCCESS)
+    cout << "\033[32m[Rows]\033[0m " << 1 << " row affected. " << endl;
   return Created;
 }
 
@@ -604,8 +631,9 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
         dberr_t Dropped=current_db_engine->catalog_mgr_->DropIndex((*tables_it)->GetTableName(),index_name_drop);
 
         if(Dropped==DB_INDEX_NOT_FOUND){
-          printf("Index Not Found\n");
+          printf("\033[33m[Warning]\033[0m Index not found. \n");
         }
+        cout << "\033[32m[Rows]\033[0m " << 1 << " row affected. " << endl;
         return DB_SUCCESS;
       }
 
@@ -614,8 +642,7 @@ dberr_t ExecuteEngine::ExecuteDropIndex(pSyntaxNode ast, ExecuteContext *context
 
   }
 
-
-  printf("Index drop failed\n");
+  printf("\033[31m[ERROR]\033[0m Index drop failed. \n");
   return DB_FAILED;
 }
 
@@ -664,7 +691,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
     uint32_t keymap;
     vector<Row*> ans;
     if(t->GetSchema()->GetColumnIndex(col_name, keymap)!=DB_SUCCESS){
-      cout<<"column not found"<<endl;
+      cout<<"column not found. "<<endl;
       return ans;
     }
     const Column* key_col = t->GetSchema()->GetColumn(keymap);
@@ -702,7 +729,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareEquals(benchmk)){
@@ -717,7 +744,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         Field benchmk(type,float(valfloat));
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareEquals(benchmk)){
@@ -745,8 +772,15 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
                   const char* test = r[i]->GetField(keymap)->GetData();
                   // cout<<"tuple len "<<sizeof(test)<<" "<<test<<endl;
                   int eq=1;
-                  for(uint32_t q = 0;q<sizeof(test)+2;q++){
-                    if(test[q]!=ch[q]) eq=0;
+//                  for(uint32_t q = 0;q<sizeof(test)+2;q++){
+//                    if(test[q]!=ch[q]) eq=0;
+//                  }
+                  bool isequal = strcmp(test,ch);
+                  if(isequal == 0){
+                    eq=1;
+                  }
+                  else{
+                    eq = 0;
                   }
                   // string ts = test;
                   if(eq==1){
@@ -803,7 +837,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         Field benchmk(type,int(valint));
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareLessThan(benchmk)){
@@ -818,7 +852,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         Field benchmk(type,float(valfloat));
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareLessThan(benchmk)){
@@ -850,7 +884,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         Field benchmk(type,int(valint));
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareGreaterThan(benchmk)){
@@ -865,7 +899,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         Field benchmk(type,float(valfloat));
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareGreaterThan(benchmk)){
@@ -899,7 +933,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         Field benchmk(type,int(valint));
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareLessThanEquals(benchmk)){
@@ -914,7 +948,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         Field benchmk(type,float(valfloat));
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareLessThanEquals(benchmk)){
@@ -948,7 +982,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         Field benchmk(type,int(valint));
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareGreaterThanEquals(benchmk)){
@@ -963,7 +997,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         Field benchmk(type,float(valfloat));
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareGreaterThanEquals(benchmk)){
@@ -997,7 +1031,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         Field benchmk(type,int(valint));
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareNotEquals(benchmk)){
@@ -1012,7 +1046,7 @@ vector<Row*> SelectTuple(pSyntaxNode sn, std::vector<Row*>& r, TableInfo* t, Cat
         Field benchmk(type,float(valfloat));
         for(uint32_t i=0;i<r.size();i++){
           if(!r[i]->GetField(keymap)->CheckComparable(benchmk)){
-            cout<<"not comparable"<<endl;
+            cout<<"incomparable. "<<endl;
             return ans;
           }
           if(r[i]->GetField(keymap)->CompareNotEquals(benchmk)){
@@ -1055,7 +1089,7 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
   TableInfo *tableinfo = nullptr;
   dberr_t GetRet = current_db_engine->catalog_mgr_->GetTable(table_name, tableinfo);
   if (GetRet==DB_TABLE_NOT_EXIST){
-    cout<<"Table Not Exist!"<<endl;
+    cout<<"\033[31m[ERROR]\033[0m Table not exist. "<<endl;
     return DB_FAILED;
   }
   if(range->type_ == kNodeAllColumns){
@@ -1072,36 +1106,74 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
         columns.push_back(pos);
       }
       else{
-        cout<<"column not found"<<endl;
+        cout<<"\033[31m[ERROR]\033[0m Column not found. "<<endl;
         return DB_FAILED;
       }
       col = col->next_;
     }
   }
-  cout<<"--------------------"<<endl;
-  cout<<endl;
+  vector<int> width;
+  int towidth = 0;
+  int temp;
   for(auto i:columns){
-    cout<<tableinfo->GetSchema()->GetColumn(i)->GetName()<<"   ";
+    temp = tableinfo->GetSchema()->GetColumn(i)->GetName().size();
+    // cout << "dfs" << temp << endl;
+    width.push_back( temp );
+    towidth += temp + 5;
   }
-  cout<<endl;
-  cout<<"--------------------"<<endl;
+  cout<<"+";
+  for(uint32_t j = 0; j < width.size(); j++) {
+    for(int i = 0; i < width[j]+4; i++) {
+      cout << "-";
+    }
+    cout << "+";
+  }
+  cout << endl;
+  for(auto i:columns){
+    cout<< "|  " << tableinfo->GetSchema()->GetColumn(i)->GetName()<< "  ";
+  }
+  cout << "|" << endl;
+  cout<<"+";
+  for(uint32_t j = 0; j < width.size(); j++) {
+    for(int i = 0; i < width[j]+4; i++) {
+      cout << "-";
+    }
+    cout << "+";
+  }
+  cout << endl;
+
   if(range->next_->next_==nullptr)//
   {
     int cnt=0;
     for(auto it=tableinfo->GetTableHeap()->Begin(nullptr);it!=tableinfo->GetTableHeap()->End();it++){
       for(uint32_t j=0;j<columns.size();j++){
+        cout << "| ";
         if(it->GetField(columns[j])->IsNull()){
-          cout<<"null";
+          cout << setw(width[j]+3) << "null";
         }
         else
+          // cout << setw(width[j]+3) << it->GetField(columns[j])->GetData();
           it->GetField(columns[j])->fprint();
-        cout<<"  ";
-        
+          cout << "  ";
       }
-      cout<<endl;
+      cout << "|" << endl;
       cnt++;
     }
-    cout<<"Select Success, Affects "<<cnt<<" Record!"<<endl;
+    if (cnt == 0) {
+      cout << "|";
+      for(int j = 0; j < towidth - 1; j++) cout << " " ;
+      cout << "|" << endl;
+    }
+    cout<<"+";
+    for(uint32_t j = 0; j < width.size(); j++) {
+      for(int i = 0; i < width[j]+4; i++) {
+        cout << "-";
+      }
+      cout << "+";
+    }
+    cout << endl;
+
+    cout<<"\033[32m[Rows]\033[0m Select Success, Affects "<<cnt<<" Record. "<<endl;
     return DB_SUCCESS;
   }
   else if(range->next_->next_->type_ == kNodeConditions){
@@ -1114,13 +1186,34 @@ dberr_t ExecuteEngine::ExecuteSelect(pSyntaxNode ast, ExecuteContext *context) {
     auto ptr_rows  = SelectTuple(cond, *&origin_rows,tableinfo,current_db_engine->catalog_mgr_);
     
     for(auto it=ptr_rows.begin();it!=ptr_rows.end();it++){
+
       for(uint32_t j=0;j<columns.size();j++){
-        (*it)->GetField(columns[j])->fprint();
-        cout<<"  ";
+        cout << "| ";
+        if((*it)->GetField(columns[j])->IsNull()){
+          cout << setw(width[j]+3) << "null";
+        }
+        else
+          // cout << setw(width[j]+3) << (*it)->GetField(columns[j])->GetData();
+          (*it)->GetField(columns[j])->fprint();
+          cout << "  ";
       }
-      cout<<endl;
+      cout << "|" << endl;
     }
-    cout<<"Select Success, Affects "<<ptr_rows.size()<<" Record!"<<endl;
+    if (ptr_rows.size() == 0) {
+      cout << "|";
+      for(int j = 0; j < towidth - 1; j++) cout << " " ;
+      cout << "|" << endl;
+    }
+    cout<<"+";
+    for(uint32_t j = 0; j < width.size(); j++) {
+      for(int i = 0; i < width[j]+4; i++) {
+        cout << "-";
+      }
+      cout << "+";
+    }
+    cout << endl;
+
+    cout<<"\033[32m[Rows]\033[0m Select Success, Affects "<<ptr_rows.size()<<" Record. "<<endl;
   }
   
   return DB_SUCCESS;
@@ -1195,14 +1288,14 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
   }
   if(column_node!=nullptr){
     // more
-    printf("too many attributes");
+    printf("\033[31m[ERROR]\033[0m Too many attributes.\n ");
     return  DB_FAILED;
   }
   Row row(fields);
   bool  inserted = tableheap->InsertTuple(row, nullptr);
 
   if(inserted == false){
-    printf("insert failed");
+    printf("\033[31m[ERROR]\033[0m Insert failed.\n");
     return  DB_FAILED;
   }
   else{
@@ -1226,7 +1319,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
       dberr_t Inserted=(*index_it)->GetIndex()->InsertEntry(row_index,row.GetRowId(),nullptr);
       if(Inserted==DB_FAILED){
 
-        printf("insert failed");
+        printf("\033[31m[ERROR]\033[0m Insert failed.\n");
         vector <IndexInfo*> ::iterator  index_it_undo;
         for(index_it_undo =all_indexs.begin();index_it_undo!=index_it ;index_it_undo++){
           IndexSchema* index_schema_undo = (*index_it_undo)->GetIndexKeySchema();
@@ -1251,6 +1344,7 @@ dberr_t ExecuteEngine::ExecuteInsert(pSyntaxNode ast, ExecuteContext *context) {
     }
 
   }
+   cout << "\033[32m[Rows]\033[0m " << 1 << " row affected. " << endl;
   return DB_SUCCESS;
 }
 
@@ -1263,7 +1357,7 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
   TableInfo *tableinfo = nullptr;
   dberr_t GetRet = current_db_engine->catalog_mgr_->GetTable(table_name, tableinfo);
   if (GetRet==DB_TABLE_NOT_EXIST){
-    cout<<"Table Not Exist!"<<endl;
+    cout<<"\033[31m[ERROR]\033[0m Table not exist. "<<endl;
     return DB_FAILED;
   }
   TableHeap* tableheap=tableinfo->GetTableHeap();//
@@ -1288,7 +1382,7 @@ dberr_t ExecuteEngine::ExecuteDelete(pSyntaxNode ast, ExecuteContext *context) {
   for(auto it:tar){
     tableheap->ApplyDelete(it->GetRowId(),nullptr);
   }
-  cout<<"Delete Success, Affects "<<tar.size()<<" Record!"<<endl;
+  cout<<"\033[32m[Rows]\033[0m Delete Success, Affects "<<tar.size()<<" Record!"<<endl;
   vector <IndexInfo*> indexes;//indexinfo
   current_db_engine->catalog_mgr_->GetTableIndexes(table_name,indexes);
   for(auto p=indexes.begin();p!=indexes.end();p++){
@@ -1372,7 +1466,7 @@ dberr_t ExecuteEngine::ExecuteUpdate(pSyntaxNode ast, ExecuteContext *context) {
   for(auto it:Got){
     tableheap->UpdateTuple(*it,it->GetRowId(),nullptr);
   }
-  cout<<"Update Success, Affects "<<Got.size()<<" Record!"<<endl;
+  cout<<"\033[32m[Rows]\033[0m Update Success, Affects "<<Got.size()<<" Record!"<<endl;
   return DB_SUCCESS;
 }
 
@@ -1425,6 +1519,7 @@ dberr_t ExecuteEngine::ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context)
       ExecuteContext context_;
       Execute(MinisqlGetParserRootNode(), &context_);
 //      sleep(1);
+      usleep(100);
 
       // clean memory after parse
       MinisqlParserFinish();
@@ -1435,7 +1530,7 @@ dberr_t ExecuteEngine::ExecuteExecfile(pSyntaxNode ast, ExecuteContext *context)
     return DB_SUCCESS;
   }
   else{
-    printf("failed to open file\n");
+    printf("\033[31m[ERROR]\033[0m Failed to open file.\n");
     return DB_FAILED;
   }
 
